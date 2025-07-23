@@ -45,6 +45,8 @@ public class ConfigManager {
         }
         config = YamlConfiguration.loadConfiguration(configFile);
         plugin.getLogger().info("Загружен config.yml из: " + configFile.getAbsolutePath());
+        // Выводим содержимое для отладки
+        plugin.getLogger().info("Содержимое config.yml: " + config.saveToString());
     }
 
     private void loadMessages() {
@@ -66,33 +68,65 @@ public class ConfigManager {
             phases.add(new Phase("<white>Дефолтная фаза", "<white>Дефолтная", defaultSpawns));
             return;
         }
-        plugin.getLogger().info("Загружаю фазы из секции mine.phases. Количество ключей: " + phasesSection.getKeys(false).size());
-        for (String key : phasesSection.getKeys(false)) {
-            String name = phasesSection.getString(key + ".name");
-            String displayName = phasesSection.getString(key + ".display_name");
-            ConfigurationSection spawnsSection = phasesSection.getConfigurationSection(key + ".spawns");
-            plugin.getLogger().info("Обработка фазы " + key + ". name=" + name + ", display_name=" + displayName + ", spawnsSection=" + (spawnsSection != null));
-            if (name == null || displayName == null || spawnsSection == null) {
-                plugin.getLogger().warning("Некорректные данные для фазы: " + key + ". Пропущена.");
-                continue;
-            }
-            Map<String, Double> spawns = new HashMap<>();
-            plugin.getLogger().info("Обрабатываю спавны для фазы " + key + ". Количество спавнов: " + spawnsSection.getKeys(false).size());
-            for (String material : spawnsSection.getKeys(false)) {
-                double weight = spawnsSection.getDouble(material);
-                plugin.getLogger().info("Проверка материала " + material + " с весом " + weight);
-                if (Material.getMaterial(material) != null) {
-                    spawns.put(material, weight);
-                    plugin.getLogger().info("Добавлен материал: " + material + " с весом " + weight + " для фазы " + key);
-                } else {
-                    plugin.getLogger().warning("Неверный материал в фазе " + key + ": " + material + ". Пропущен.");
+        // Проверяем, является ли это список
+        List<Map<?, ?>> phasesList = config.getMapList("mine.phases");
+        if (phasesList.isEmpty()) {
+            plugin.getLogger().warning("Секция mine.phases не содержит списка. Проверяем как секцию...");
+            for (String key : phasesSection.getKeys(false)) {
+                ConfigurationSection phaseSection = phasesSection.getConfigurationSection(key);
+                if (phaseSection != null) {
+                    String name = phaseSection.getString("name");
+                    String displayName = phaseSection.getString("display_name");
+                    ConfigurationSection spawnsSection = phaseSection.getConfigurationSection("spawns");
+                    plugin.getLogger().info("Обработка фазы " + key + ". name=" + name + ", display_name=" + displayName + ", spawnsSection=" + (spawnsSection != null));
+                    if (name == null || displayName == null || spawnsSection == null) {
+                        plugin.getLogger().warning("Некорректные данные для фазы: " + key + ". Пропущена.");
+                        continue;
+                    }
+                    Map<String, Double> spawns = new HashMap<>();
+                    for (String material : spawnsSection.getKeys(false)) {
+                        double weight = spawnsSection.getDouble(material);
+                        plugin.getLogger().info("Проверка материала " + material + " с весом " + weight);
+                        if (Material.getMaterial(material) != null) {
+                            spawns.put(material, weight);
+                            plugin.getLogger().info("Добавлен материал: " + material + " с весом " + weight + " для фазы " + key);
+                        } else {
+                            plugin.getLogger().warning("Неверный материал в фазе " + key + ": " + material + ". Пропущен.");
+                        }
+                    }
+                    if (!spawns.isEmpty()) {
+                        phases.add(new Phase(name, displayName, spawns));
+                        plugin.getLogger().info("Фаза " + key + " успешно загружена с " + spawns.size() + " материалами.");
+                    } else {
+                        plugin.getLogger().warning("Список spawns для фазы " + key + " пуст. Фаза пропущена.");
+                    }
                 }
             }
-            if (!spawns.isEmpty()) {
-                phases.add(new Phase(name, displayName, spawns));
-                plugin.getLogger().info("Фаза " + key + " успешно загружена с " + spawns.size() + " материалами.");
-            } else {
-                plugin.getLogger().warning("Список spawns для фазы " + key + " пуст. Фаза пропущена.");
+        } else {
+            plugin.getLogger().info("Обнаружен список mine.phases. Количество элементов: " + phasesList.size());
+            for (Map<?, ?> phaseMap : phasesList) {
+                String name = (String) phaseMap.get("name");
+                String displayName = (String) phaseMap.get("display_name");
+                @SuppressWarnings("unchecked")
+                Map<String, Double> spawns = (Map<String, Double>) phaseMap.get("spawns");
+                plugin.getLogger().info("Обработка фазы. name=" + name + ", display_name=" + displayName + ", spawns=" + (spawns != null));
+                if (name != null && displayName != null && spawns != null) {
+                    Map<String, Double> validatedSpawns = new HashMap<>();
+                    for (Map.Entry<String, Double> entry : spawns.entrySet()) {
+                        if (Material.getMaterial(entry.getKey()) != null) {
+                            validatedSpawns.put(entry.getKey(), entry.getValue());
+                            plugin.getLogger().info("Добавлен материал: " + entry.getKey() + " с весом " + entry.getValue());
+                        } else {
+                            plugin.getLogger().warning("Неверный материал: " + entry.getKey() + ". Пропущен.");
+                        }
+                    }
+                    if (!validatedSpawns.isEmpty()) {
+                        phases.add(new Phase(name, displayName, validatedSpawns));
+                        plugin.getLogger().info("Фаза успешно загружена с " + validatedSpawns.size() + " материалами.");
+                    }
+                } else {
+                    plugin.getLogger().warning("Некорректные данные фазы. Пропущена.");
+                }
             }
         }
         if (phases.isEmpty()) {
@@ -128,27 +162,59 @@ public class ConfigManager {
     private void loadQuests() {
         quests.clear();
         ConfigurationSection questsSection = config.getConfigurationSection("quests");
+        plugin.getLogger().info("Попытка загрузки секции quests. Секция найдена: " + (questsSection != null));
         if (questsSection == null) {
             plugin.getLogger().warning("Секция quests отсутствует в config.yml.");
             return;
         }
-        for (String key : questsSection.getKeys(false)) {
-            String id = questsSection.getString(key + ".id");
-            String name = questsSection.getString(key + ".name");
-            String description = questsSection.getString(key + ".description");
-            String materialName = questsSection.getString(key + ".material");
-            Material material = Material.getMaterial(materialName);
-            int amount = questsSection.getInt(key + ".amount");
-            if (id == null || name == null || material == null || amount <= 0) {
-                plugin.getLogger().warning("Некорректные данные для квеста: " + key + ". Пропущен.");
-                continue;
+        List<Map<?, ?>> questsList = config.getMapList("quests");
+        if (questsList.isEmpty()) {
+            plugin.getLogger().warning("Секция quests не содержит списка. Проверяем как секцию...");
+            for (String key : questsSection.getKeys(false)) {
+                ConfigurationSection questSection = questsSection.getConfigurationSection(key);
+                if (questSection != null) {
+                    String id = questSection.getString("id");
+                    String name = questSection.getString("name");
+                    String description = questSection.getString("description");
+                    String materialName = questSection.getString("material");
+                    Material material = Material.getMaterial(materialName);
+                    int amount = questSection.getInt("amount");
+                    plugin.getLogger().info("Обработка квеста " + key + ". id=" + id + ", name=" + name + ", material=" + materialName + ", amount=" + amount);
+                    if (id == null || name == null || material == null || amount <= 0) {
+                        plugin.getLogger().warning("Некорректные данные для квеста: " + key + ". Пропущен.");
+                        continue;
+                    }
+                    ConfigurationSection rewardSection = questSection.getConfigurationSection("reward");
+                    double money = rewardSection != null ? rewardSection.getDouble("money", 0.0) : 0.0;
+                    int experience = rewardSection != null ? rewardSection.getInt("experience", 0) : 0;
+                    List<String> commands = rewardSection != null ? rewardSection.getStringList("commands") : new ArrayList<>();
+                    quests.add(new Quest(id, name, description, material, amount, money, experience, commands));
+                    plugin.getLogger().info("Загружен квест: " + id + " (материал: " + materialName + ", количество: " + amount + ")");
+                }
             }
-            ConfigurationSection rewardSection = questsSection.getConfigurationSection(key + ".reward");
-            double money = rewardSection != null ? rewardSection.getDouble("money", 0.0) : 0.0;
-            int experience = rewardSection != null ? rewardSection.getInt("experience", 0) : 0;
-            List<String> commands = rewardSection != null ? rewardSection.getStringList("commands") : new ArrayList<>();
-            quests.add(new Quest(id, name, description, material, amount, money, experience, commands));
-            plugin.getLogger().info("Загружен квест: " + id + " (материал: " + materialName + ", количество: " + amount + ")");
+        } else {
+            plugin.getLogger().info("Обнаружен список quests. Количество элементов: " + questsList.size());
+            for (Map<?, ?> questMap : questsList) {
+                String id = (String) questMap.get("id");
+                String name = (String) questMap.get("name");
+                String description = (String) questMap.get("description");
+                String materialName = (String) questMap.get("material");
+                Material material = Material.getMaterial(materialName);
+                int amount = ((Number) questMap.get("amount")).intValue();
+                plugin.getLogger().info("Обработка квеста. id=" + id + ", name=" + name + ", material=" + materialName + ", amount=" + amount);
+                if (id != null && name != null && material != null && amount > 0) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> rewardMap = (Map<String, Object>) questMap.get("reward");
+                    double money = rewardMap != null ? (Double) rewardMap.getOrDefault("money", 0.0) : 0.0;
+                    int experience = rewardMap != null ? ((Number) rewardMap.getOrDefault("experience", 0)).intValue() : 0;
+                    @SuppressWarnings("unchecked")
+                    List<String> commands = rewardMap != null ? (List<String>) rewardMap.getOrDefault("commands", new ArrayList<>()) : new ArrayList<>();
+                    quests.add(new Quest(id, name, description, material, amount, money, experience, commands));
+                    plugin.getLogger().info("Загружен квест: " + id + " (материал: " + materialName + ", количество: " + amount + ")");
+                } else {
+                    plugin.getLogger().warning("Некорректные данные квеста. Пропущен.");
+                }
+            }
         }
         if (quests.isEmpty()) {
             plugin.getLogger().warning("Список квестов пуст.");
