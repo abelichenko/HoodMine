@@ -26,7 +26,7 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-// Класс для управления квестами
+// Класс для управления квестами и GUI скупщика
 public class QuestManager implements Listener {
     private final HoodMinePlugin plugin;
     private final ConfigManager configManager;
@@ -231,7 +231,7 @@ public class QuestManager implements Listener {
         player.openInventory(inventory);
     }
 
-    // Обработка кликов по GUI скупщика
+    // Обработка кликов по GUI
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         String title = event.getView().getTitle();
@@ -272,12 +272,16 @@ public class QuestManager implements Listener {
     // Обработка продажи предмета
     private void handleSellItem(Player player, ConfigManager.SellItem sellItem) {
         Material material = Material.getMaterial(sellItem.getMaterial());
+        String mineName = configManager.getMineName();
+        String phaseName = regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена";
+        String timeToNext = String.valueOf(regionManager.getTimeToNextPhase());
+
         if (material == null) {
             player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
                     MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_invalid_material"),
-                            Placeholder.unparsed("mine_name", configManager.getMineName()),
-                            Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
-                            Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
+                            Placeholder.unparsed("mine_name", mineName),
+                            Placeholder.unparsed("mine_phase", phaseName),
+                            Placeholder.unparsed("time_to_next", timeToNext))
             ));
             return;
         }
@@ -294,9 +298,9 @@ public class QuestManager implements Listener {
             player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
                     MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_not_enough"),
                             Placeholder.unparsed("material", sellItem.getDisplayName()),
-                            Placeholder.unparsed("mine_name", configManager.getMineName()),
-                            Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
-                            Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
+                            Placeholder.unparsed("mine_name", mineName),
+                            Placeholder.unparsed("mine_phase", phaseName),
+                            Placeholder.unparsed("time_to_next", timeToNext))
             ));
             return;
         }
@@ -332,9 +336,9 @@ public class QuestManager implements Listener {
                         Placeholder.unparsed("amount", String.valueOf(sellItem.getAmount())),
                         Placeholder.unparsed("material", sellItem.getDisplayName()),
                         Placeholder.unparsed("money", String.format("%.2f", finalPrice)),
-                        Placeholder.unparsed("mine_name", configManager.getMineName()),
-                        Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
-                        Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
+                        Placeholder.unparsed("mine_name", mineName),
+                        Placeholder.unparsed("mine_phase", phaseName),
+                        Placeholder.unparsed("time_to_next", timeToNext))
         ));
     }
 
@@ -344,6 +348,9 @@ public class QuestManager implements Listener {
         Player player = event.getPlayer();
         if (regionManager.isInMineRegion(event.getBlock().getLocation())) {
             String material = event.getBlock().getType().name();
+            String mineName = configManager.getMineName();
+            String phaseName = regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена";
+            String timeToNext = String.valueOf(regionManager.getTimeToNextPhase());
             for (ConfigManager.Quest quest : configManager.getQuests()) {
                 if (quest.getTargetBlock().equals(material)) {
                     UUID playerId = player.getUniqueId();
@@ -363,9 +370,9 @@ public class QuestManager implements Listener {
                                         Placeholder.unparsed("quest", LegacyComponentSerializer.legacySection().serialize(
                                                 MiniMessage.miniMessage().deserialize(formattedTitle)
                                         )),
-                                        Placeholder.unparsed("mine_name", configManager.getMineName()),
-                                        Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
-                                        Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase()))
+                                        Placeholder.unparsed("mine_name", mineName),
+                                        Placeholder.unparsed("mine_phase", phaseName),
+                                        Placeholder.unparsed("time_to_next", timeToNext)
                                 )
                         ));
                         resetPlayerProgress(playerId, questId);

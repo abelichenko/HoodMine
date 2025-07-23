@@ -5,7 +5,7 @@ import com.example.hoodmine.config.ConfigManager;
 import com.example.hoodmine.database.DatabaseManager;
 import com.example.hoodmine.quests.QuestManager;
 import com.example.hoodmine.utils.HologramManager;
-import com.example.hoodmine.utils.NPCManager;
+import com.example.hoodmine.utils.PlaceholderHook;
 import com.example.hoodmine.utils.RegionManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -13,28 +13,27 @@ import org.bukkit.plugin.java.JavaPlugin;
 public class HoodMinePlugin extends JavaPlugin {
     private ConfigManager configManager;
     private RegionManager regionManager;
-    private QuestManager questManager;
     private DatabaseManager databaseManager;
+    private QuestManager questManager;
     private HologramManager hologramManager;
-    private NPCManager npcManager;
 
     @Override
     public void onEnable() {
+        saveDefaultConfig();
         configManager = new ConfigManager(this);
         databaseManager = new DatabaseManager(this);
-        regionManager = new RegionManager(this, configManager);
+        regionManager = new RegionManager(this, configManager, databaseManager);
         questManager = new QuestManager(this, configManager, databaseManager, regionManager);
-        hologramManager = new HologramManager(this, configManager);
-        npcManager = new NPCManager(this);
+        hologramManager = new HologramManager(this, configManager, regionManager);
         getCommand("hoodmine").setExecutor(new HoodMineCommand(this, configManager, regionManager, questManager));
-        regionManager.startPhaseUpdateTask();
-        getLogger().info("Плагин HoodMine включён!");
-    }
 
-    @Override
-    public void onDisable() {
-        databaseManager.closeConnection();
-        getLogger().info("Плагин HoodMine выключен!");
+        // Регистрация плейсхолдеров в PlaceholderAPI
+        if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
+            new PlaceholderHook(this, configManager, regionManager).register();
+            getLogger().info("PlaceholderAPI подключен, плейсхолдеры зарегистрированы.");
+        } else {
+            getLogger().warning("PlaceholderAPI не найден, плейсхолдеры не будут работать в других плагинах.");
+        }
     }
 
     public ConfigManager getConfigManager() {
@@ -45,19 +44,15 @@ public class HoodMinePlugin extends JavaPlugin {
         return regionManager;
     }
 
-    public QuestManager getQuestManager() {
-        return questManager;
-    }
-
     public DatabaseManager getDatabaseManager() {
         return databaseManager;
     }
 
-    public HologramManager getHologramManager() {
-        return hologramManager;
+    public QuestManager getQuestManager() {
+        return questManager;
     }
 
-    public NPCManager getNPCManager() {
-        return npcManager;
+    public HologramManager getHologramManager() {
+        return hologramManager;
     }
 }

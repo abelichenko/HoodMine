@@ -55,12 +55,16 @@ public class CommandHandler {
 
     // Обработка команды /hoodmine sell [material] [amount]
     public void handleSell(Player player, String[] args) {
+        String mineName = configManager.getMineName();
+        String phaseName = regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена";
+        String timeToNext = String.valueOf(regionManager.getTimeToNextPhase());
+
         if (args.length < 2) {
             player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
                     MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_usage"),
-                            Placeholder.unparsed("mine_name", configManager.getMineName()),
-                            Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
-                            Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
+                            Placeholder.unparsed("mine_name", mineName),
+                            Placeholder.unparsed("mine_phase", phaseName),
+                            Placeholder.unparsed("time_to_next", timeToNext))
             ));
             return;
         }
@@ -70,9 +74,9 @@ public class CommandHandler {
         if (!sellPrices.containsKey(materialName)) {
             player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
                     MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_invalid_material"),
-                            Placeholder.unparsed("mine_name", configManager.getMineName()),
-                            Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
-                            Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
+                            Placeholder.unparsed("mine_name", mineName),
+                            Placeholder.unparsed("mine_phase", phaseName),
+                            Placeholder.unparsed("time_to_next", timeToNext))
             ));
             return;
         }
@@ -83,18 +87,18 @@ public class CommandHandler {
             if (amount <= 0) {
                 player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
                         MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_invalid_amount"),
-                                Placeholder.unparsed("mine_name", configManager.getMineName()),
-                                Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
-                                Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
+                                Placeholder.unparsed("mine_name", mineName),
+                                Placeholder.unparsed("mine_phase", phaseName),
+                                Placeholder.unparsed("time_to_next", timeToNext))
                 ));
                 return;
             }
         } catch (NumberFormatException e) {
             player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
                     MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_invalid_amount"),
-                            Placeholder.unparsed("mine_name", configManager.getMineName()),
-                            Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
-                            Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
+                            Placeholder.unparsed("mine_name", mineName),
+                            Placeholder.unparsed("mine_phase", phaseName),
+                            Placeholder.unparsed("time_to_next", timeToNext))
             ));
             return;
         }
@@ -103,9 +107,9 @@ public class CommandHandler {
         if (material == null) {
             player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
                     MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_invalid_material"),
-                            Placeholder.unparsed("mine_name", configManager.getMineName()),
-                            Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
-                            Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
+                            Placeholder.unparsed("mine_name", mineName),
+                            Placeholder.unparsed("mine_phase", phaseName),
+                            Placeholder.unparsed("time_to_next", timeToNext))
             ));
             return;
         }
@@ -128,9 +132,9 @@ public class CommandHandler {
                     MiniMessage.miniMessage().deserialize(
                             configManager.getRawMessage("sell_not_enough"),
                             Placeholder.unparsed("material", displayName),
-                            Placeholder.unparsed("mine_name", configManager.getMineName()),
-                            Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
-                            Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase()))
+                            Placeholder.unparsed("mine_name", mineName),
+                            Placeholder.unparsed("mine_phase", phaseName),
+                            Placeholder.unparsed("time_to_next", timeToNext)
                     )
             ));
             return;
@@ -167,9 +171,9 @@ public class CommandHandler {
                         Placeholder.unparsed("amount", String.valueOf(amount)),
                         Placeholder.unparsed("material", displayName),
                         Placeholder.unparsed("money", String.format("%.2f", finalPrice)),
-                        Placeholder.unparsed("mine_name", configManager.getMineName()),
-                        Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
-                        Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase()))
+                        Placeholder.unparsed("mine_name", mineName),
+                        Placeholder.unparsed("mine_phase", phaseName),
+                        Placeholder.unparsed("time_to_next", timeToNext)
                 )
         ));
     }
@@ -181,35 +185,39 @@ public class CommandHandler {
 
     // Обработка команды /hoodmine reset
     public void handleReset(Player player) {
+        String mineName = configManager.getMineName();
+        String phaseName = regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена";
+        String timeToNext = String.valueOf(regionManager.getTimeToNextPhase());
+
         if (regionManager.getMineRegion() == null) {
             player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
                     MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_region"),
-                            Placeholder.unparsed("mine_name", configManager.getMineName()),
-                            Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
-                            Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
+                            Placeholder.unparsed("mine_name", mineName),
+                            Placeholder.unparsed("mine_phase", phaseName),
+                            Placeholder.unparsed("time_to_next", timeToNext))
             ));
             return;
         }
         regionManager.resetMine();
         player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
                 MiniMessage.miniMessage().deserialize(configManager.getRawMessage("reset_success"),
-                        Placeholder.unparsed("mine_name", configManager.getMineName()),
-                        Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
-                        Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
+                        Placeholder.unparsed("mine_name", mineName),
+                        Placeholder.unparsed("mine_phase", phaseName),
+                        Placeholder.unparsed("time_to_next", timeToNext))
         ));
     }
 
     // Обработка команды /hoodmine info
     public void handleInfo(Player player) {
-        ConfigManager.Phase currentPhase = regionManager.getCurrentPhase();
-        String phaseName = currentPhase != null ? currentPhase.getDisplayName() : "Не установлена";
-        long timeToNext = regionManager.getTimeToNextPhase();
+        String mineName = configManager.getMineName();
+        String phaseName = regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена";
+        String timeToNext = String.valueOf(regionManager.getTimeToNextPhase());
         player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
                 MiniMessage.miniMessage().deserialize(
                         configManager.getRawMessage("info_message"),
-                        Placeholder.unparsed("mine_name", configManager.getMineName()),
+                        Placeholder.unparsed("mine_name", mineName),
                         Placeholder.unparsed("mine_phase", phaseName),
-                        Placeholder.unparsed("time_to_next", String.valueOf(timeToNext))
+                        Placeholder.unparsed("time_to_next", timeToNext)
                 )
         ));
     }
