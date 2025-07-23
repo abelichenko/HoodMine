@@ -24,7 +24,7 @@ public class HoodMinePlugin extends JavaPlugin {
         databaseManager = new DatabaseManager(this);
         regionManager = new RegionManager(this, configManager);
         questManager = new QuestManager(this, configManager, databaseManager, regionManager);
-        hologramManager = new HologramManager(this);
+        hologramManager = new HologramManager(this, configManager);
         npcManager = new NPCManager(this);
         getCommand("hoodmine").setExecutor(new HoodMineCommand(this, configManager, regionManager, questManager));
         regionManager.startPhaseUpdateTask();

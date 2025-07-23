@@ -6,6 +6,8 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -98,7 +100,7 @@ public class NPCManager implements Listener {
         FileConfiguration config = YamlConfiguration.loadConfiguration(file);
         ConfigurationSection npcsSection = config.getConfigurationSection("npcs");
         if (npcsSection == null) return;
-        CommandHandler handler = new CommandHandler(plugin, plugin.getConfigManager(), this, plugin.getQuestManager());
+        CommandHandler handler = new CommandHandler(plugin, plugin.getConfigManager(), plugin.getRegionManager(), plugin.getQuestManager());
         for (String key : npcsSection.getKeys(false)) {
             String uuidStr = npcsSection.getString(key + ".uuid");
             String worldName = npcsSection.getString(key + ".world");
