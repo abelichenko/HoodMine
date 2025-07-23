@@ -5,6 +5,8 @@ import com.example.hoodmine.config.ConfigManager;
 import com.example.hoodmine.quests.QuestManager;
 import com.example.hoodmine.utils.NPCManager;
 import com.example.hoodmine.utils.RegionManager;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -33,7 +35,9 @@ public class HoodMineCommand implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
-            sender.sendMessage(configManager.getMessage("usage"));
+            sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("usage"))
+            ));
             return true;
         }
 
@@ -41,22 +45,30 @@ public class HoodMineCommand implements CommandExecutor {
         switch (subCommand) {
             case "setregion":
                 if (!(sender instanceof Player)) {
-                    sender.sendMessage(configManager.getMessage("player_only"));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("player_only"))
+                    ));
                     return true;
                 }
                 if (!sender.hasPermission("hoodmine.admin")) {
-                    sender.sendMessage(configManager.getMessage("no_permission"));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_permission"))
+                    ));
                     return true;
                 }
                 return handler.handleSetRegion((Player) sender);
 
             case "setname":
                 if (!sender.hasPermission("hoodmine.admin")) {
-                    sender.sendMessage(configManager.getMessage("no_permission"));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_permission"))
+                    ));
                     return true;
                 }
                 if (args.length < 2) {
-                    sender.sendMessage(configManager.getMessage("setname_usage"));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("setname_usage"))
+                    ));
                     return true;
                 }
                 String name = String.join(" ", args).substring(args[0].length() + 1);
@@ -65,11 +77,15 @@ public class HoodMineCommand implements CommandExecutor {
 
             case "quests":
                 if (!(sender instanceof Player)) {
-                    sender.sendMessage(configManager.getMessage("player_only"));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("player_only"))
+                    ));
                     return true;
                 }
                 if (!sender.hasPermission("hoodmine.quests")) {
-                    sender.sendMessage(configManager.getMessage("no_permission"));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_permission"))
+                    ));
                     return true;
                 }
                 handler.handleQuests((Player) sender);
@@ -77,11 +93,15 @@ public class HoodMineCommand implements CommandExecutor {
 
             case "sell":
                 if (!(sender instanceof Player)) {
-                    sender.sendMessage(configManager.getMessage("player_only"));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("player_only"))
+                    ));
                     return true;
                 }
                 if (!sender.hasPermission("hoodmine.sell")) {
-                    sender.sendMessage(configManager.getMessage("no_permission"));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_permission"))
+                    ));
                     return true;
                 }
                 handler.handleSell((Player) sender, args.length > 1 ? new String[]{args[1], args.length > 2 ? args[2] : "1"} : new String[]{"", ""});
@@ -89,11 +109,15 @@ public class HoodMineCommand implements CommandExecutor {
 
             case "reset":
                 if (!(sender instanceof Player)) {
-                    sender.sendMessage(configManager.getMessage("player_only"));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("player_only"))
+                    ));
                     return true;
                 }
                 if (!sender.hasPermission("hoodmine.admin")) {
-                    sender.sendMessage(configManager.getMessage("no_permission"));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_permission"))
+                    ));
                     return true;
                 }
                 handler.handleReset((Player) sender);
@@ -101,11 +125,15 @@ public class HoodMineCommand implements CommandExecutor {
 
             case "info":
                 if (!(sender instanceof Player)) {
-                    sender.sendMessage(configManager.getMessage("player_only"));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("player_only"))
+                    ));
                     return true;
                 }
                 if (!sender.hasPermission("hoodmine.info")) {
-                    sender.sendMessage(configManager.getMessage("no_permission"));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_permission"))
+                    ));
                     return true;
                 }
                 handler.handleInfo((Player) sender);
@@ -113,15 +141,21 @@ public class HoodMineCommand implements CommandExecutor {
 
             case "npc":
                 if (!(sender instanceof Player)) {
-                    sender.sendMessage(configManager.getMessage("player_only"));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("player_only"))
+                    ));
                     return true;
                 }
                 if (!sender.hasPermission("hoodmine.admin")) {
-                    sender.sendMessage(configManager.getMessage("no_permission"));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_permission"))
+                    ));
                     return true;
                 }
                 if (args.length < 2 || (!args[1].equalsIgnoreCase("spawn") && !args[1].equalsIgnoreCase("remove"))) {
-                    sender.sendMessage(configManager.getMessage("npc_usage"));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("npc_usage"))
+                    ));
                     return true;
                 }
                 Player player = (Player) sender;
@@ -133,7 +167,9 @@ public class HoodMineCommand implements CommandExecutor {
                 return true;
 
             default:
-                sender.sendMessage(configManager.getMessage("unknown_command"));
+                sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                        MiniMessage.miniMessage().deserialize(configManager.getRawMessage("unknown_command"))
+                ));
                 return true;
         }
     }

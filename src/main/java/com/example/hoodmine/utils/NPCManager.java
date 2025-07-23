@@ -52,7 +52,9 @@ public class NPCManager implements Listener {
         npcActions.put(villager.getUniqueId(), action);
         npcLocations.put(villager.getUniqueId(), location);
         saveNPCs();
-        player.sendMessage(MiniMessage.miniMessage().deserialize("<green>NPC успешно создан!"));
+        player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                MiniMessage.miniMessage().deserialize("<green>NPC успешно создан!")
+        ));
     }
 
     // Удаление NPC
@@ -67,7 +69,9 @@ public class NPCManager implements Listener {
                     npcLocations.remove(v.getUniqueId());
                     v.remove();
                     saveNPCs();
-                    player.sendMessage(MiniMessage.miniMessage().deserialize("<green>NPC успешно удалён!"));
+                    player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                            MiniMessage.miniMessage().deserialize("<green>NPC успешно удалён!")
+                    ));
                 });
     }
 

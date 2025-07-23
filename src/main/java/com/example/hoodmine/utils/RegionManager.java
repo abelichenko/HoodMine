@@ -11,6 +11,7 @@ import com.sk89q.worldedit.world.block.BlockType;
 import com.sk89q.worldedit.world.block.BlockTypes;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -32,12 +33,14 @@ public class RegionManager {
     private CuboidRegion mineRegion;
     private int currentPhaseIndex;
     private final Random random;
+    private long timeToNextPhase;
 
     public RegionManager(HoodMinePlugin plugin, ConfigManager configManager) {
         this.plugin = plugin;
         this.configManager = configManager;
         this.currentPhaseIndex = 0;
         this.random = new Random();
+        this.timeToNextPhase = configManager.getTimerInterval();
         loadRegion(); // Загрузка региона при инициализации
     }
 
@@ -45,7 +48,9 @@ public class RegionManager {
     public boolean setRegion(Player player) {
         WorldEditPlugin worldEdit = (WorldEditPlugin) Bukkit.getPluginManager().getPlugin("WorldEdit");
         if (worldEdit == null) {
-            player.sendMessage(configManager.getMessage("no_worldedit"));
+            player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_worldedit"))
+            ));
             return false;
         }
 
@@ -56,22 +61,30 @@ public class RegionManager {
             Region region = session.getSelection(weWorld);
 
             if (region == null || !(region instanceof CuboidRegion)) {
-                player.sendMessage(configManager.getMessage("no_region"));
+                player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                        MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_region"))
+                ));
                 return false;
             }
 
             mineRegion = (CuboidRegion) region;
             saveRegion(); // Сохраняем регион
-            player.sendMessage(configManager.getMessage("setregion_ok"));
+            player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("setregion_ok"))
+            ));
             resetMine(); // Сброс региона после установки
             return true;
         } catch (com.sk89q.worldedit.IncompleteRegionException e) {
-            player.sendMessage(configManager.getMessage("no_region"));
+            player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_region"))
+            ));
             return false;
         } catch (Exception e) {
-            player.sendMessage(MiniMessage.miniMessage().deserialize(
-                    configManager.getRawMessage("setregion_error"),
-                    Placeholder.unparsed("error", e.getMessage())
+            player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                    MiniMessage.miniMessage().deserialize(
+                            configManager.getRawMessage("setregion_error"),
+                            Placeholder.unparsed("error", e.getMessage())
+                    )
             ));
             plugin.getLogger().severe("Ошибка установки региона: " + e.getMessage());
             e.printStackTrace();
@@ -171,6 +184,7 @@ public class RegionManager {
         }
 
         currentPhaseIndex = (currentPhaseIndex + 1) % configManager.getPhases().size();
+        timeToNextPhase = configManager.getTimerInterval(); // Сбрасываем таймер
     }
 
     // Запуск задачи обновления фаз
@@ -181,11 +195,18 @@ public class RegionManager {
         }
 
         new BukkitRunnable() {
+            long ticksRemaining = configManager.getTimerInterval() * 20L;
+
             @Override
             public void run() {
-                resetMine();
+                ticksRemaining -= 20L; // Уменьшаем на 1 секунду (20 тиков)
+                timeToNextPhase = ticksRemaining / 20L;
+                if (ticksRemaining <= 0) {
+                    resetMine();
+                    ticksRemaining = configManager.getTimerInterval() * 20L; // Сбрасываем таймер
+                }
             }
-        }.runTaskTimer(plugin, 0L, configManager.getTimerInterval() * 20L);
+        }.runTaskTimer(plugin, 0L, 20L); // Запускаем каждую секунду
     }
 
     // Получение текущей фазы
@@ -199,10 +220,7 @@ public class RegionManager {
 
     // Получение времени до следующей фазы
     public long getTimeToNextPhase() {
-        if (configManager.getPhases().isEmpty()) {
-            return 0;
-        }
-        return configManager.getTimerInterval();
+        return timeToNextPhase;
     }
 
     // Проверка, находится ли локация в регионе шахты

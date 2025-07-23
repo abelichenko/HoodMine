@@ -6,6 +6,7 @@ import com.example.hoodmine.quests.QuestManager;
 import com.example.hoodmine.utils.RegionManager;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
@@ -36,9 +37,11 @@ public class CommandHandler {
     // Обработка команды /hoodmine setname <name>
     public void handleSetName(CommandSender sender, String name) {
         configManager.setMineName(name);
-        sender.sendMessage(MiniMessage.miniMessage().deserialize(
-                configManager.getRawMessage("setname_ok"),
-                Placeholder.unparsed("name", name)
+        sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                MiniMessage.miniMessage().deserialize(
+                        configManager.getRawMessage("setname_ok"),
+                        Placeholder.unparsed("name", name)
+                )
         ));
     }
 
@@ -50,14 +53,18 @@ public class CommandHandler {
     // Обработка команды /hoodmine sell [material] [amount]
     public void handleSell(Player player, String[] args) {
         if (args.length < 2) {
-            player.sendMessage(configManager.getMessage("sell_usage"));
+            player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_usage"))
+            ));
             return;
         }
 
         String materialName = args[0].toUpperCase();
         Map<String, Double> sellPrices = configManager.getSellPrices();
         if (!sellPrices.containsKey(materialName)) {
-            player.sendMessage(configManager.getMessage("sell_invalid_material"));
+            player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_invalid_material"))
+            ));
             return;
         }
 
@@ -65,17 +72,23 @@ public class CommandHandler {
         try {
             amount = Integer.parseInt(args[1]);
             if (amount <= 0) {
-                player.sendMessage(configManager.getMessage("sell_invalid_amount"));
+                player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                        MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_invalid_amount"))
+                ));
                 return;
             }
         } catch (NumberFormatException e) {
-            player.sendMessage(configManager.getMessage("sell_invalid_amount"));
+            player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_invalid_amount"))
+            ));
             return;
         }
 
         Material material = Material.getMaterial(materialName);
         if (material == null) {
-            player.sendMessage(configManager.getMessage("sell_invalid_material"));
+            player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_invalid_material"))
+            ));
             return;
         }
 
@@ -94,9 +107,11 @@ public class CommandHandler {
                     .findFirst()
                     .map(ConfigManager.Quest::getDisplayName)
                     .orElse(materialName);
-            player.sendMessage(MiniMessage.miniMessage().deserialize(
-                    configManager.getRawMessage("sell_not_enough"),
-                    Placeholder.unparsed("material", displayName)
+            player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                    MiniMessage.miniMessage().deserialize(
+                            configManager.getRawMessage("sell_not_enough"),
+                            Placeholder.unparsed("material", displayName)
+                    )
             ));
             return;
         }
@@ -127,23 +142,27 @@ public class CommandHandler {
                 .findFirst()
                 .map(ConfigManager.Quest::getDisplayName)
                 .orElse(materialName);
-        player.sendMessage(MiniMessage.miniMessage().deserialize(
-                configManager.getRawMessage("sell_success"),
-                Placeholder.unparsed("amount", String.valueOf(amount)),
-                Placeholder.unparsed("material", displayName),
-                Placeholder.unparsed("money", String.format("%.2f", finalPrice))
+        player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                MiniMessage.miniMessage().deserialize(
+                        configManager.getRawMessage("sell_success"),
+                        Placeholder.unparsed("amount", String.valueOf(amount)),
+                        Placeholder.unparsed("material", displayName),
+                        Placeholder.unparsed("money", String.format("%.2f", finalPrice))
+                )
         ));
     }
 
     // Обработка команды /hoodmine reset
     public void handleReset(Player player) {
         if (regionManager.getMineRegion() == null) {
-            player.sendMessage(configManager.getMessage("no_region"));
+            player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_region"))
+            ));
             return;
         }
         regionManager.resetMine();
-        player.sendMessage(MiniMessage.miniMessage().deserialize(
-                configManager.getRawMessage("reset_success")
+        player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                MiniMessage.miniMessage().deserialize(configManager.getRawMessage("reset_success"))
         ));
     }
 
@@ -152,11 +171,13 @@ public class CommandHandler {
         ConfigManager.Phase currentPhase = regionManager.getCurrentPhase();
         String phaseName = currentPhase != null ? currentPhase.getDisplayName() : "Не установлена";
         long timeToNext = regionManager.getTimeToNextPhase();
-        player.sendMessage(MiniMessage.miniMessage().deserialize(
-                configManager.getRawMessage("info_message"),
-                Placeholder.unparsed("mine_name", configManager.getMineName()),
-                Placeholder.unparsed("phase", phaseName),
-                Placeholder.unparsed("time", String.valueOf(timeToNext))
+        player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                MiniMessage.miniMessage().deserialize(
+                        configManager.getRawMessage("info_message"),
+                        Placeholder.unparsed("mine_name", configManager.getMineName()),
+                        Placeholder.unparsed("phase", phaseName),
+                        Placeholder.unparsed("time", String.valueOf(timeToNext))
+                )
         ));
     }
 }

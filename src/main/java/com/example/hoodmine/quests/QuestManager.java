@@ -123,9 +123,11 @@ public class QuestManager implements Listener {
                             String finalCommand = command.replace("%play%", player.getName());
                             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCommand);
                         }
-                        player.sendMessage(MiniMessage.miniMessage().deserialize(
-                                configManager.getRawMessage("quest_completed"),
-                                Placeholder.unparsed("quest", quest.getTitle())
+                        player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                                MiniMessage.miniMessage().deserialize(
+                                        configManager.getRawMessage("quest_completed"),
+                                        Placeholder.unparsed("quest", quest.getTitle())
+                                )
                         ));
                         resetPlayerProgress(playerId, questId);
                     }
