@@ -2,6 +2,7 @@ package com.example.hoodmine.utils;
 
 import com.example.hoodmine.HoodMinePlugin;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
@@ -29,7 +30,11 @@ public class NPCManager implements Listener {
     public void spawnNPC(Player player, Consumer<Player> action) {
         Location location = player.getLocation();
         Villager villager = location.getWorld().spawn(location, Villager.class, v -> {
-            v.setCustomName(MiniMessage.miniMessage().deserialize("<green>Шахтёр NPC"));
+            // Преобразуем Component в строку с использованием LegacyComponentSerializer
+            String name = LegacyComponentSerializer.legacySection().serialize(
+                    MiniMessage.miniMessage().deserialize("<green>Шахтёр NPC")
+            );
+            v.setCustomName(name);
             v.setCustomNameVisible(true);
             v.setAI(false);
             v.setInvulnerable(true);

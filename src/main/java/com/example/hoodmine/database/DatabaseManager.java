@@ -1,6 +1,7 @@
 package com.example.hoodmine.database;
 
 import com.example.hoodmine.HoodMinePlugin;
+import com.example.hoodmine.config.ConfigManager;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -54,12 +55,13 @@ public class DatabaseManager {
                 stmt.setString(5, questId);
                 stmt.executeUpdate();
             }
-            // Если прогресс достиг максимума, увеличиваем счётчик завершённых квестов
-            if (progress >= plugin.getConfigManager().getQuests().stream()
+            // Проверка достижения максимального прогресса для квеста
+            int questAmount = plugin.getConfigManager().getQuests().stream()
                     .filter(q -> q.getId().equals(questId))
                     .findFirst()
                     .map(ConfigManager.Quest::getAmount)
-                    .orElse(0)) {
+                    .orElse(0);
+            if (progress >= questAmount) {
                 String updateCompletedSQL = "UPDATE player_quests SET completed = completed + 1 " +
                         "WHERE player_uuid = ? AND quest_id = ?";
                 try (PreparedStatement stmt = connection.prepareStatement(updateCompletedSQL)) {
