@@ -28,12 +28,12 @@ public class CommandHandler {
         this.questManager = questManager;
     }
 
-    // Обработка команды /hoodmine установить_регион
+    // Обработка команды /hoodmine setregion
     public boolean handleSetRegion(Player player) {
         return regionManager.setRegion(player);
     }
 
-    // Обработка команды /hoodmine название <имя>
+    // Обработка команды /hoodmine setname <name>
     public void handleSetName(CommandSender sender, String name) {
         configManager.setMineName(name);
         sender.sendMessage(MiniMessage.miniMessage().deserialize(
@@ -42,12 +42,12 @@ public class CommandHandler {
         ));
     }
 
-    // Обработка команды /hoodmine квесты
+    // Обработка команды /hoodmine quests
     public void handleQuests(Player player) {
         questManager.openQuestsGUI(player);
     }
 
-    // Обработка команды /hoodmine продать [материал] [количество]
+    // Обработка команды /hoodmine sell [material] [amount]
     public void handleSell(Player player, String[] args) {
         if (args.length < 2) {
             player.sendMessage(configManager.getMessage("sell_usage"));
@@ -55,7 +55,7 @@ public class CommandHandler {
         }
 
         String materialName = args[0].toUpperCase();
-        Map<String, Double> sellPrices = configManager.getSellPrices();
+        Map<String, Double> sellPrices = configManager.getSellPrices();
         if (!sellPrices.containsKey(materialName)) {
             player.sendMessage(configManager.getMessage("sell_invalid_material"));
             return;
@@ -123,7 +123,7 @@ public class CommandHandler {
         ));
     }
 
-    // Обработка команды /hoodmine сброс
+    // Обработка команды /hoodmine reset
     public void handleReset(Player player) {
         if (regionManager.getMineRegion() == null) {
             player.sendMessage(configManager.getMessage("no_region"));
@@ -135,10 +135,10 @@ public class CommandHandler {
         ));
     }
 
-    // Обработка команды /hoodmine инфо
+    // Обработка команды /hoodmine info
     public void handleInfo(Player player) {
         ConfigManager.Phase currentPhase = regionManager.getCurrentPhase();
-        String phaseName = currentPhase != null ? currentPhase.getDisplayName() : "Не установлена";
+        String phaseName = currentPhase != null ? currentPhase.getDisplayName() : "Not set";
         long timeToNext = regionManager.getTimeToNextPhase();
         player.sendMessage(MiniMessage.miniMessage().deserialize(
                 configManager.getRawMessage("info_message"),

@@ -7,12 +7,14 @@ import com.example.hoodmine.utils.RegionManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -42,17 +44,26 @@ public class QuestManager implements Listener {
 
     // Открытие GUI квестов
     public void openQuestsGUI(Player player) {
-        Inventory inventory = plugin.getServer().createInventory(null, 27, "Квесты шахты");
+        Inventory inventory = plugin.getServer().createInventory(null, 27, "Quests");
         for (ConfigManager.Quest quest : configManager.getQuests()) {
             ItemStack item = new ItemStack(Material.valueOf(quest.getTargetBlock()));
             ItemMeta meta = item.getItemMeta();
-            meta.displayName(MiniMessage.miniMessage().deserialize(quest.getTitle()));
-            List<Component> lore = new ArrayList<>();
-            lore.add(MiniMessage.miniMessage().deserialize("Требуется: " + quest.getAmount() + " " + quest.getTargetBlock()));
-            lore.add(MiniMessage.miniMessage().deserialize("Награда: Выполнить команды"));
+            // Преобразуем HEX-цвета в Legacy-формат для корректного отображения
+            meta.setDisplayName(LegacyComponentSerializer.legacySection().serialize(
+                    MiniMessage.miniMessage().deserialize(quest.getTitle())
+            ));
+            List<String> lore = new ArrayList<>();
+            lore.add(LegacyComponentSerializer.legacySection().serialize(
+                    MiniMessage.miniMessage().deserialize("Required: " + quest.getAmount() + " " + quest.getTargetBlock())
+            ));
+            lore.add(LegacyComponentSerializer.legacySection().serialize(
+                    MiniMessage.miniMessage().deserialize("Reward: Execute commands")
+            ));
             int progress = getPlayerProgress(player.getUniqueId(), quest.getId());
-            lore.add(MiniMessage.miniMessage().deserialize("Прогресс: " + progress + "/" + quest.getAmount()));
-            meta.lore(lore);
+            lore.add(LegacyComponentSerializer.legacySection().serialize(
+                    MiniMessage.miniMessage().deserialize("Progress: " + progress + "/" + quest.getAmount())
+            ));
+            meta.setLore(lore);
             item.setItemMeta(meta);
             inventory.addItem(item);
         }
@@ -85,6 +96,14 @@ public class QuestManager implements Listener {
                     }
                 }
             }
+        }
+    }
+
+    // Обработка кликов по инвентарю
+    @EventHandler
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (event.getView().getTitle().equals("Quests")) {
+            event.setCancelled(true); // Блокируем взаимодействие с предметами
         }
     }
 

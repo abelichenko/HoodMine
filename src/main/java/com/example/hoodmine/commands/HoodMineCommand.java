@@ -39,7 +39,7 @@ public class HoodMineCommand implements CommandExecutor {
 
         String subCommand = args[0].toLowerCase();
         switch (subCommand) {
-            case "установить_регион":
+            case "setregion":
                 if (!(sender instanceof Player)) {
                     sender.sendMessage(configManager.getMessage("player_only"));
                     return true;
@@ -50,7 +50,7 @@ public class HoodMineCommand implements CommandExecutor {
                 }
                 return handler.handleSetRegion((Player) sender);
 
-            case "название":
+            case "setname":
                 if (!sender.hasPermission("hoodmine.admin")) {
                     sender.sendMessage(configManager.getMessage("no_permission"));
                     return true;
@@ -63,7 +63,7 @@ public class HoodMineCommand implements CommandExecutor {
                 handler.handleSetName(sender, name);
                 return true;
 
-            case "квесты":
+            case "quests":
                 if (!(sender instanceof Player)) {
                     sender.sendMessage(configManager.getMessage("player_only"));
                     return true;
@@ -75,7 +75,7 @@ public class HoodMineCommand implements CommandExecutor {
                 handler.handleQuests((Player) sender);
                 return true;
 
-            case "продать":
+            case "sell":
                 if (!(sender instanceof Player)) {
                     sender.sendMessage(configManager.getMessage("player_only"));
                     return true;
@@ -87,7 +87,7 @@ public class HoodMineCommand implements CommandExecutor {
                 handler.handleSell((Player) sender, args.length > 1 ? new String[]{args[1], args.length > 2 ? args[2] : "1"} : new String[]{"", ""});
                 return true;
 
-            case "сброс":
+            case "reset":
                 if (!(sender instanceof Player)) {
                     sender.sendMessage(configManager.getMessage("player_only"));
                     return true;
@@ -99,7 +99,7 @@ public class HoodMineCommand implements CommandExecutor {
                 handler.handleReset((Player) sender);
                 return true;
 
-            case "инфо":
+            case "info":
                 if (!(sender instanceof Player)) {
                     sender.sendMessage(configManager.getMessage("player_only"));
                     return true;
@@ -111,7 +111,7 @@ public class HoodMineCommand implements CommandExecutor {
                 handler.handleInfo((Player) sender);
                 return true;
 
-            case "нпс":
+            case "npc":
                 if (!(sender instanceof Player)) {
                     sender.sendMessage(configManager.getMessage("player_only"));
                     return true;
