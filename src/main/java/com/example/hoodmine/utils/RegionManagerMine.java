@@ -4,8 +4,10 @@ import com.example.hoodmine.HoodMinePlugin;
 import com.example.hoodmine.config.ConfigManager;
 import com.example.hoodmine.database.DatabaseManager;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
+import com.sk89q.worldedit.bukkit.WorldEditPlugin;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldguard.WorldGuard;
+import com.sk89q.worldguard.protection.managers.RegionManager;
 import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
@@ -15,8 +17,10 @@ import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
@@ -45,7 +49,7 @@ public class RegionManagerMine {
         if (regionId != null) {
             World world = plugin.getServer().getWorld(config.getString("world"));
             if (world != null) {
-                RegionManagerMine regionManager = WorldGuard.getInstance().getPlatform().getRegionContainer().get(BukkitAdapter.adapt(world));
+                RegionManager regionManager = WorldGuard.getInstance().getPlatform().getRegionContainer().get(BukkitAdapter.adapt(world));
                 if (regionManager != null) {
                     mineRegion = regionManager.getRegion(regionId);
                 }
@@ -59,7 +63,23 @@ public class RegionManagerMine {
     public boolean setRegion(Player player) {
         com.sk89q.worldedit.regions.Region selection = null;
         try {
-            selection = WorldEditPlugin.getInstance().getSession(player).getSelection(BukkitAdapter.adapt(player.getWorld()));
+            Plugin worldEdit = plugin.getServer().getPluginManager().getPlugin("WorldEdit");
+            if (worldEdit instanceof WorldEditPlugin) {
+                selection = ((WorldEditPlugin) worldEdit).getSession(player).getSelection(BukkitAdapter.adapt(player.getWorld()));
+            } else {
+                String mineName = configManager.getMineName();
+                String phaseName = currentPhase != null ? currentPhase.getDisplayName() : "Не установлена";
+                String timeToNext = String.valueOf(timeToNextPhase);
+                player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                        MiniMessage.miniMessage().deserialize(
+                                configManager.getRawMessage("worldedit_not_found"),
+                                Placeholder.unparsed("mine_name", mineName),
+                                Placeholder.unparsed("mine_phase", phaseName),
+                                Placeholder.unparsed("time_to_next", timeToNext)
+                        )
+                ));
+                return false;
+            }
         } catch (Exception e) {
             String mineName = configManager.getMineName();
             String phaseName = currentPhase != null ? currentPhase.getDisplayName() : "Не установлена";
@@ -75,7 +95,7 @@ public class RegionManagerMine {
             return false;
         }
         World world = player.getWorld();
-        RegionManagerMine regionManager = WorldGuard.getInstance().getPlatform().getRegionContainer().get(BukkitAdapter.adapt(world));
+        RegionManager regionManager = WorldGuard.getInstance().getPlatform().getRegionContainer().get(BukkitAdapter.adapt(world));
         if (regionManager == null) {
             String mineName = configManager.getMineName();
             String phaseName = currentPhase != null ? currentPhase.getDisplayName() : "Не установлена";

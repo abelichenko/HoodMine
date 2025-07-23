@@ -100,16 +100,13 @@ public class HologramManager {
     private static class Hologram {
         private final Location location;
         private final List<String> lines;
-        private Object hologramInstance; // Заглушка для API голограмм (например, HolographicDisplays)
 
         public Hologram(Location location, List<String> lines) {
             this.location = location;
             this.lines = new ArrayList<>(lines);
-            // Инициализация голограммы (зависит от API)
         }
 
         public void update(String mineName, String phaseName, String timeToNext) {
-            // Обновление голограммы с использованием плейсхолдеров
             List<String> updatedLines = new ArrayList<>();
             for (String line : lines) {
                 updatedLines.add(LegacyComponentSerializer.legacySection().serialize(
@@ -122,7 +119,6 @@ public class HologramManager {
                 ));
             }
             // Здесь должен быть код для обновления голограммы через API (например, HolographicDisplays)
-            // Пример: hologramInstance.clearLines(); updatedLines.forEach(hologramInstance::appendTextLine);
         }
     }
 }
