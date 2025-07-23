@@ -46,6 +46,7 @@ public class QuestManager implements Listener {
             UUID playerId = player.getUniqueId();
             int completed = databaseManager.getCompletedQuests(playerId);
             completedQuests.put(playerId, completed);
+            plugin.getLogger().info("Загружено " + completed + " завершённых квестов для " + player.getName());
         }
     }
 
@@ -62,6 +63,7 @@ public class QuestManager implements Listener {
                 String questId = quest.getId();
                 int current = progress.getOrDefault(questId, 0) + 1;
                 progress.put(questId, current);
+                plugin.getLogger().info(player.getName() + " прогресс по квесту " + questId + ": " + current + "/" + quest.getAmount());
                 if (current >= quest.getAmount()) {
                     completeQuest(player, quest);
                     progress.remove(questId);
@@ -107,14 +109,14 @@ public class QuestManager implements Listener {
             Map<String, Integer> progress = getPlayerProgress(player.getUniqueId());
             int current = progress.getOrDefault(quest.getId(), 0);
             List<Component> lore = new ArrayList<>();
-            if (quest.getDescription() != null) {
-                lore.add(MiniMessage.miniMessage().deserialize(quest.getDescription()));
-            }
+            lore.add(MiniMessage.miniMessage().deserialize(quest.getDescription() != null ? quest.getDescription() : "<gray>Описание отсутствует"));
             lore.add(MiniMessage.miniMessage().deserialize("<white>Прогресс: <green>" + current + "/" + quest.getAmount()));
-            lore.add(MiniMessage.miniMessage().deserialize("<white>Награда: <green>$" + quest.getMoney()));
-            lore.add(MiniMessage.miniMessage().deserialize("<white>Опыт: <green>" + quest.getExperience()));
+            lore.add(MiniMessage.miniMessage().deserialize("<white>Награда: <green>$" + quest.getMoney() + " | <white>Опыт: <green>" + quest.getExperience()));
             meta.lore(lore);
             item.setItemMeta(meta);
+            plugin.getLogger().info("Создан предмет для квеста " + quest.getId() + " для " + player.getName());
+        } else {
+            plugin.getLogger().warning("Не удалось получить ItemMeta для квеста " + quest.getId());
         }
         return item;
     }

@@ -1,3 +1,4 @@
+# Конфигурация шахты
 mine:
   name: "<#FFFF55>Золотая Шахта"
   world: "world"
@@ -17,6 +18,7 @@ mine:
         GOLD_ORE: 0.1
         DIAMOND_ORE: 0.05
         EMERALD_ORE: 0.05
+# Конфигурация скупщика
 seller:
   items:
     COAL:
@@ -47,6 +49,7 @@ seller:
       lore:
         - "<white>Цена: <green>$<price>"
         - "<white>Множитель: <green><multiplier>x"
+# Конфигурация квестов
 quests:
   - id: mine_coal
     name: "<green>Добыча угля"
@@ -68,6 +71,7 @@ quests:
       experience: 200
       commands:
         - "give %player% emerald 1"
+# Конфигурация множителя наград
 reward_multiplier:
   base: 1.0
   per_quest: 0.1

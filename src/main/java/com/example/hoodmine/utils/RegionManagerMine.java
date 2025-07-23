@@ -9,6 +9,7 @@ import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldguard.WorldGuard;
 import com.sk89q.worldguard.protection.managers.RegionManager;
 import com.sk89q.worldguard.protection.regions.ProtectedRegion;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.Location;
@@ -56,6 +57,7 @@ public class RegionManagerMine {
         List<ConfigManager.Phase> phases = configManager.getPhases();
         if (!phases.isEmpty()) {
             currentPhase = phases.get(0);
+            plugin.getLogger().info("Установлена начальная фаза: " + currentPhase.getName() + " с " + currentPhase.getSpawns().size() + " материалами.");
         } else {
             plugin.getLogger().warning("Список фаз пуст. Устанавливается currentPhase = null.");
             currentPhase = null;
@@ -153,8 +155,15 @@ public class RegionManagerMine {
                 for (int z = min.getBlockZ(); z <= max.getBlockZ(); z++) {
                     Location loc = new Location(world, x, y, z);
                     if (mineRegion.contains(x, y, z)) {
-                        String material = getRandomMaterial(currentPhase.getSpawns());
-                        loc.getBlock().setType(Material.valueOf(material));
+                        String materialName = getRandomMaterial(currentPhase.getSpawns());
+                        Material material = Material.getMaterial(materialName);
+                        if (material != null) {
+                            loc.getBlock().setType(material);
+                            plugin.getLogger().info("Установлен блок: " + materialName + " в " + x + "," + y + "," + z);
+                        } else {
+                            plugin.getLogger().warning("Неверный материал: " + materialName + ". Установлен STONE.");
+                            loc.getBlock().setType(Material.STONE);
+                        }
                     }
                 }
             }
@@ -163,29 +172,34 @@ public class RegionManagerMine {
 
     private String getRandomMaterial(Map<String, Double> spawns) {
         if (spawns == null || spawns.isEmpty()) {
-            plugin.getLogger().warning("Список spawns пуст. Используется STONE по умолчанию.");
+            plugin.getLogger().warning("Список spawns пуст или null. Содержимое: " + (spawns != null ? spawns.toString() : "null"));
             return "STONE";
         }
         double totalWeight = 0.0;
         for (Double weight : spawns.values()) {
-            totalWeight += weight;
+            if (weight != null && weight > 0) {
+                totalWeight += weight;
+            } else {
+                plugin.getLogger().warning("Некорректный вес (null или <= 0) в spawns. Игнорируется. Список: " + spawns.toString());
+            }
         }
         if (totalWeight <= 0.0) {
-            plugin.getLogger().warning("Сумма весов spawns равна 0. Используется STONE по умолчанию.");
+            plugin.getLogger().warning("Сумма весов spawns <= 0. Список: " + spawns.toString());
             return "STONE";
         }
+        plugin.getLogger().info("Общая сумма весов: " + totalWeight + ". Список материалов: " + spawns.toString());
         double randomValue = random.nextDouble() * totalWeight;
         double currentWeight = 0.0;
         for (Map.Entry<String, Double> entry : spawns.entrySet()) {
-            currentWeight += entry.getValue();
-            if (randomValue <= currentWeight) {
-                if (Material.getMaterial(entry.getKey()) != null) {
+            if (entry.getValue() != null && entry.getValue() > 0) {
+                currentWeight += entry.getValue();
+                if (randomValue <= currentWeight) {
+                    plugin.getLogger().info("Выбран материал: " + entry.getKey() + " с весом " + entry.getValue() + ". Случайное значение: " + randomValue);
                     return entry.getKey();
-                } else {
-                    plugin.getLogger().warning("Неверный материал в spawns: " + entry.getKey());
                 }
             }
         }
+        plugin.getLogger().warning("Не удалось выбрать материал. Возвращен STONE. Список: " + spawns.toString());
         return "STONE";
     }
 
