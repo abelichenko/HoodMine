@@ -55,7 +55,7 @@ public class CommandHandler {
         }
 
         String materialName = args[0].toUpperCase();
-        Map<String, Double> sellPrices = configManager.getSellPrices();
+        Map<String, Double> sellPrices = configManager.getSellPrices();
         if (!sellPrices.containsKey(materialName)) {
             player.sendMessage(configManager.getMessage("sell_invalid_material"));
             return;

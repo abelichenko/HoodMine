@@ -13,6 +13,7 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -101,7 +102,10 @@ public class RegionManager {
                 if (rand <= cumulative) {
                     BlockType blockType = BlockTypes.get(entry.getKey().toLowerCase());
                     if (blockType != null) {
-                        world.getBlockAt(pos.getX(), pos.getY(), pos.getZ()).setType(BukkitAdapter.adapt(blockType).getMaterial());
+                        Material material = Material.getMaterial(entry.getKey().toUpperCase());
+                        if (material != null) {
+                            world.getBlockAt(pos.getX(), pos.getY(), pos.getZ()).setType(material);
+                        }
                     }
                     break;
                 }

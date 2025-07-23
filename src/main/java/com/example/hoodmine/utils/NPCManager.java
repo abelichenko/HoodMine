@@ -1,41 +1,66 @@
 package com.example.hoodmine.utils;
 
 import com.example.hoodmine.HoodMinePlugin;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Location;
-import org.bukkit.entity.ArmorStand;
-import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 import java.util.function.Consumer;
 
 // Класс для управления NPC
-public class NPCManager {
-    private final HoodMinePlugin plugin; // Ссылка на плагин
+public class NPCManager implements Listener {
+    private final HoodMinePlugin plugin;
+    private final Map<UUID, Consumer<Player>> npcActions;
 
     public NPCManager(HoodMinePlugin plugin) {
         this.plugin = plugin;
+        this.npcActions = new HashMap<>();
+        plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
 
-    // Спавн NPC с заданным именем и действием при взаимодействии
-    public void spawnNPC(Location location, String name, Consumer<Player> onInteract) {
-        ArmorStand npc = (ArmorStand) location.getWorld().spawnEntity(location, EntityType.ARMOR_STAND);
-        npc.setCustomName(ColorUtils.colorize("#55FF55", name));
-        npc.setCustomNameVisible(true);
-        npc.setInvisible(true);
-        npc.setInvulnerable(true);
-        npc.setGravity(false);
+    // Спавн NPC
+    public void spawnNPC(Player player, Consumer<Player> action) {
+        Location location = player.getLocation();
+        Villager villager = location.getWorld().spawn(location, Villager.class, v -> {
+            v.setCustomName(MiniMessage.miniMessage().deserialize("<green>Шахтёр NPC"));
+            v.setCustomNameVisible(true);
+            v.setAI(false);
+            v.setInvulnerable(true);
+        });
+        npcActions.put(villager.getUniqueId(), action);
+        player.sendMessage(MiniMessage.miniMessage().deserialize("<green>NPC успешно создан!"));
+    }
 
-        // Регистрация события для взаимодействия с NPC
-        plugin.getServer().getPluginManager().registerEvents(new Listener() {
-            @EventHandler
-            public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
-                if (event.getRightClicked().equals(npc)) {
-                    onInteract.accept(event.getPlayer());
-                }
+    // Удаление NPC
+    public void removeNPC(Player player) {
+        Location location = player.getLocation();
+        player.getWorld().getEntitiesByClass(Villager.class).stream()
+                .filter(v -> v.getCustomName() != null && v.getCustomName().contains("Шахтёр NPC"))
+                .filter(v -> v.getLocation().distanceSquared(location) < 25)
+                .findFirst()
+                .ifPresent(v -> {
+                    npcActions.remove(v.getUniqueId());
+                    v.remove();
+                    player.sendMessage(MiniMessage.miniMessage().deserialize("<green>NPC успешно удалён!"));
+                });
+    }
+
+    // Обработка взаимодействия с NPC
+    @EventHandler
+    public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
+        if (event.getRightClicked() instanceof Villager villager) {
+            Consumer<Player> action = npcActions.get(villager.getUniqueId());
+            if (action != null) {
+                action.accept(event.getPlayer());
+                event.setCancelled(true);
             }
-        }, plugin);
+        }
     }
 }

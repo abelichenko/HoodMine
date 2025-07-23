@@ -10,6 +10,8 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import java.util.function.Consumer;
+
 // Класс для обработки команды /hoodmine
 public class HoodMineCommand implements CommandExecutor {
     private final HoodMinePlugin plugin;
@@ -122,10 +124,11 @@ public class HoodMineCommand implements CommandExecutor {
                     sender.sendMessage(configManager.getMessage("npc_usage"));
                     return true;
                 }
+                Player player = (Player) sender;
                 if (args[1].equalsIgnoreCase("spawn")) {
-                    npcManager.spawnNPC((Player) sender);
+                    npcManager.spawnNPC(player, p -> handler.handleQuests(p));
                 } else {
-                    npcManager.removeNPC((Player) sender);
+                    npcManager.removeNPC(player);
                 }
                 return true;
 
