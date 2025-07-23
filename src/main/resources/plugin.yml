@@ -1,0 +1,22 @@
+name: HoodMine
+version: 1.0
+main: com.example.hoodmine.HoodMinePlugin
+api-version: 1.21
+depend: [WorldEdit]
+commands:
+  hoodmine:
+    description: Основная команда плагина HoodMine
+    usage: /<command> <установить_регион|название|сброс|инфо|перезагрузить|нпс|продать|квесты>
+permissions:
+  hoodmine.admin:
+    description: Доступ к административным командам
+    default: op
+  hoodmine.info:
+    description: Доступ к просмотру информации о шахте
+    default: true
+  hoodmine.sell:
+    description: Доступ к продаже руды
+    default: true
+  hoodmine.quests:
+    description: Доступ к квестам
+    default: true

@@ -1,0 +1,137 @@
+package com.example.hoodmine.commands;
+
+import com.example.hoodmine.HoodMinePlugin;
+import com.example.hoodmine.config.ConfigManager;
+import com.example.hoodmine.quests.QuestManager;
+import com.example.hoodmine.utils.NPCManager;
+import com.example.hoodmine.utils.RegionManager;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+
+// Класс для обработки команды /hoodmine
+public class HoodMineCommand implements CommandExecutor {
+    private final HoodMinePlugin plugin;
+    private final ConfigManager configManager;
+    private final RegionManager regionManager;
+    private final QuestManager questManager;
+    private final NPCManager npcManager;
+    private final CommandHandler handler;
+
+    public HoodMineCommand(HoodMinePlugin plugin, ConfigManager configManager, RegionManager regionManager, QuestManager questManager) {
+        this.plugin = plugin;
+        this.configManager = configManager;
+        this.regionManager = regionManager;
+        this.questManager = questManager;
+        this.npcManager = new NPCManager(plugin);
+        this.handler = new CommandHandler(plugin, configManager, regionManager, questManager);
+    }
+
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (args.length == 0) {
+            sender.sendMessage(configManager.getMessage("usage"));
+            return true;
+        }
+
+        String subCommand = args[0].toLowerCase();
+        switch (subCommand) {
+            case "установить_регион":
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(configManager.getMessage("player_only"));
+                    return true;
+                }
+                if (!sender.hasPermission("hoodmine.admin")) {
+                    sender.sendMessage(configManager.getMessage("no_permission"));
+                    return true;
+                }
+                return handler.handleSetRegion((Player) sender);
+
+            case "название":
+                if (!sender.hasPermission("hoodmine.admin")) {
+                    sender.sendMessage(configManager.getMessage("no_permission"));
+                    return true;
+                }
+                if (args.length < 2) {
+                    sender.sendMessage(configManager.getMessage("setname_usage"));
+                    return true;
+                }
+                String name = String.join(" ", args).substring(args[0].length() + 1);
+                handler.handleSetName(sender, name);
+                return true;
+
+            case "квесты":
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(configManager.getMessage("player_only"));
+                    return true;
+                }
+                if (!sender.hasPermission("hoodmine.quests")) {
+                    sender.sendMessage(configManager.getMessage("no_permission"));
+                    return true;
+                }
+                handler.handleQuests((Player) sender);
+                return true;
+
+            case "продать":
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(configManager.getMessage("player_only"));
+                    return true;
+                }
+                if (!sender.hasPermission("hoodmine.sell")) {
+                    sender.sendMessage(configManager.getMessage("no_permission"));
+                    return true;
+                }
+                handler.handleSell((Player) sender, args.length > 1 ? new String[]{args[1], args.length > 2 ? args[2] : "1"} : new String[]{"", ""});
+                return true;
+
+            case "сброс":
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(configManager.getMessage("player_only"));
+                    return true;
+                }
+                if (!sender.hasPermission("hoodmine.admin")) {
+                    sender.sendMessage(configManager.getMessage("no_permission"));
+                    return true;
+                }
+                handler.handleReset((Player) sender);
+                return true;
+
+            case "инфо":
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(configManager.getMessage("player_only"));
+                    return true;
+                }
+                if (!sender.hasPermission("hoodmine.info")) {
+                    sender.sendMessage(configManager.getMessage("no_permission"));
+                    return true;
+                }
+                handler.handleInfo((Player) sender);
+                return true;
+
+            case "нпс":
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(configManager.getMessage("player_only"));
+                    return true;
+                }
+                if (!sender.hasPermission("hoodmine.admin")) {
+                    sender.sendMessage(configManager.getMessage("no_permission"));
+                    return true;
+                }
+                if (args.length < 2 || (!args[1].equalsIgnoreCase("spawn") && !args[1].equalsIgnoreCase("remove"))) {
+                    sender.sendMessage(configManager.getMessage("npc_usage"));
+                    return true;
+                }
+                if (args[1].equalsIgnoreCase("spawn")) {
+                    npcManager.spawnNPC((Player) sender);
+                } else {
+                    npcManager.removeNPC((Player) sender);
+                }
+                return true;
+
+            default:
+                sender.sendMessage(configManager.getMessage("unknown_command"));
+                return true;
+        }
+    }
+}

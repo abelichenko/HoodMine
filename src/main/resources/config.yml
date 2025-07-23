@@ -1,0 +1,46 @@
+mine_name: "Великая Шахта"
+
+timer_interval: 600
+
+phases:
+  common:
+    display_name: "#AAAAAA[Обычная Фаза]"
+    duration: 1800
+    spawns:
+      COAL_ORE: 0.30
+      IRON_ORE: 0.15
+      GOLD_ORE: 0.05
+  rare:
+    display_name: "#55FFFF[Редкая Фаза]"
+    duration: 1200
+    spawns:
+      COAL_ORE: 0.10
+      IRON_ORE: 0.20
+      GOLD_ORE: 0.10
+      DIAMOND_ORE: 0.02
+  epic:
+    display_name: "#AA00AA[Эпическая Фаза]"
+    duration: 600
+    spawns:
+      IRON_ORE: 0.10
+      GOLD_ORE: 0.10
+      DIAMOND_ORE: 0.05
+      EMERALD_ORE: 0.01
+
+quests:
+  quest1:
+    title: "#FFFF55Сломать 1000 алмазной руды"
+    target_block: DIAMOND_ORE
+    amount: 1000
+    reward:
+      - "eco give %play% 10101010"
+
+reward_multiplier:
+  base: 1.0
+  per_quest: 0.1
+  max: 2.0
+
+sell_prices:
+  DIAMOND_ORE: 50
+  IRON_ORE: 10
+  GOLD_ORE: 30
