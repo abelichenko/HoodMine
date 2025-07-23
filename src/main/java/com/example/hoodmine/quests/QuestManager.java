@@ -23,6 +23,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 // Класс для управления квестами
 public class QuestManager implements Listener {
@@ -32,6 +34,7 @@ public class QuestManager implements Listener {
     private final RegionManager regionManager;
     private final Map<UUID, Map<String, Integer>> playerProgress;
     private final Map<UUID, Integer> playerPages;
+    private final Pattern hexPattern = Pattern.compile("^#([A-Fa-f0-9]{6})(.*)$");
 
     public QuestManager(HoodMinePlugin plugin, ConfigManager configManager, DatabaseManager databaseManager, RegionManager regionManager) {
         this.plugin = plugin;
@@ -41,6 +44,17 @@ public class QuestManager implements Listener {
         this.playerProgress = new HashMap<>();
         this.playerPages = new HashMap<>();
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
+    }
+
+    // Преобразование строки с HEX-кодом в формат MiniMessage
+    private String formatTitleWithHex(String title) {
+        Matcher matcher = hexPattern.matcher(title);
+        if (matcher.matches()) {
+            String hexCode = matcher.group(1);
+            String text = matcher.group(2);
+            return "<#" + hexCode + ">" + text;
+        }
+        return title; // Если нет HEX-кода, возвращаем исходную строку
     }
 
     // Открытие GUI квестов
@@ -60,8 +74,9 @@ public class QuestManager implements Listener {
             int slot = questSlots.get(i - startIndex);
             ItemStack item = new ItemStack(Material.valueOf(quest.getTargetBlock()));
             ItemMeta meta = item.getItemMeta();
+            String formattedTitle = formatTitleWithHex(quest.getTitle());
             meta.setDisplayName(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize(quest.getTitle())
+                    MiniMessage.miniMessage().deserialize(formattedTitle)
             ));
             List<String> lore = new ArrayList<>();
             lore.add(LegacyComponentSerializer.legacySection().serialize(
@@ -123,10 +138,13 @@ public class QuestManager implements Listener {
                             String finalCommand = command.replace("%play%", player.getName());
                             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCommand);
                         }
+                        String formattedTitle = formatTitleWithHex(quest.getTitle());
                         player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
                                 MiniMessage.miniMessage().deserialize(
                                         configManager.getRawMessage("quest_completed"),
-                                        Placeholder.unparsed("quest", quest.getTitle())
+                                        Placeholder.unparsed("quest", LegacyComponentSerializer.legacySection().serialize(
+                                                MiniMessage.miniMessage().deserialize(formattedTitle)
+                                        ))
                                 )
                         ));
                         resetPlayerProgress(playerId, questId);
