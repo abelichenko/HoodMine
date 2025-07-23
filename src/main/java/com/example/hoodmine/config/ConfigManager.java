@@ -5,7 +5,6 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
@@ -25,6 +24,7 @@ public class ConfigManager {
     private double rewardMultiplierBase;
     private double rewardMultiplierPerQuest;
     private double rewardMultiplierMax;
+    private boolean showBossBar;
     private final MiniMessage miniMessage = MiniMessage.miniMessage();
 
     public ConfigManager(HoodMinePlugin plugin) {
@@ -38,20 +38,6 @@ public class ConfigManager {
         plugin.getLogger().info("Конфигурация загружена. Фаз: " + phases.size() + ", Квестов: " + quests.size());
     }
 
-    public String getRawMessage(String key) {
-        String raw = messages.getString(key, "<red>Сообщение не найдено: " + key);
-        return miniMessage.serialize(miniMessage.deserialize(raw)); // Рендеринг MiniMessage
-    }
-    // Метод для получения отформатированного имени фазы
-    public String getPhaseDisplayName(String phaseName) {
-        for (Phase phase : phases) {
-            if (phase.getName().equals(phaseName)) {
-                return miniMessage.serialize(miniMessage.deserialize(phase.getDisplayName()));
-            }
-        }
-        return phaseName;
-    }
-
     private void loadConfig() {
         plugin.saveDefaultConfig();
         File configFile = new File(plugin.getDataFolder(), "config.yml");
@@ -62,6 +48,7 @@ public class ConfigManager {
         config = YamlConfiguration.loadConfiguration(configFile);
         plugin.getLogger().info("Загружен config.yml из: " + configFile.getAbsolutePath());
         plugin.getLogger().info("Содержимое config.yml: " + config.saveToString());
+        showBossBar = config.getBoolean("settings.show_bossbar", true);
     }
 
     private void loadMessages() {
@@ -222,8 +209,29 @@ public class ConfigManager {
         return quests;
     }
 
+    public String getRawMessage(String key) {
+        String raw = messages.getString(key, "<red>Сообщение не найдено: " + key);
+        return miniMessage.serialize(miniMessage.deserialize(raw));
+    }
 
+    public String getPhaseDisplayName(String phaseName) {
+        for (Phase phase : phases) {
+            if (phase.getName().equals(phaseName)) {
+                return miniMessage.serialize(miniMessage.deserialize(phase.getDisplayName()));
+            }
+        }
+        return phaseName;
+    }
 
+    public FileConfiguration getConfig() {
+        return config;
+    }
+
+    public boolean isShowBossBar() {
+        return showBossBar;
+    }
+
+    // Добавление недостающих геттеров для множителей
     public double getRewardMultiplierBase() {
         return rewardMultiplierBase;
     }

@@ -1,4 +1,3 @@
-# Конфигурация шахты
 mine:
   name: "<#FFFF55>Золотая Шахта"
   world: "world"
@@ -76,3 +75,14 @@ reward_multiplier:
   base: 1.0
   per_quest: 0.1
   max: 2.0
+# Дополнительные настройки
+settings:
+  show_bossbar: true
+# Конфигурация NPC
+npcs:
+  seller:
+    name: "<yellow>Скупщик"
+    entity_type: VILLAGER
+  quests:
+    name: "<green>Квестодатель"
+    entity_type: PLAYER

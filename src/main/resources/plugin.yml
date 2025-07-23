@@ -21,3 +21,15 @@ permissions:
   hoodmine.quests:
     description: Доступ к квестам
     default: true
+  hoodmine.npc.spawn.seller:
+    description: Разрешение на спавн NPC скупщика
+    default: op
+  hoodmine.npc.spawn.quests:
+    description: Разрешение на спавн NPC квестов
+    default: op
+  hoodmine.npc.delete.seller:
+    description: Разрешение на удаление NPC скупщика
+    default: op
+  hoodmine.npc.delete.quests:
+    description: Разрешение на удаление NPC квестов
+    default: op
