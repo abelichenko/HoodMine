@@ -4,9 +4,9 @@ import com.example.hoodmine.HoodMinePlugin;
 import com.example.hoodmine.config.ConfigManager;
 import com.example.hoodmine.database.DatabaseManager;
 import com.example.hoodmine.utils.RegionManagerMine;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -89,15 +89,13 @@ public class QuestManager implements Listener {
         String mineName = configManager.getMineName();
         String phaseName = regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена";
         String timeToNext = String.valueOf(regionManager.getTimeToNextPhase());
-        player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                MiniMessage.miniMessage().deserialize(
-                        configManager.getRawMessage("quest_completed"),
-                        Placeholder.unparsed("quest_name", quest.getName()),
-                        Placeholder.unparsed("mine_name", mineName),
-                        Placeholder.unparsed("mine_phase", phaseName),
-                        Placeholder.unparsed("time_to_next", timeToNext),
-                        Placeholder.unparsed("multiplier", String.format("%.2f", getPlayerMultiplier(playerId)))
-                )
+        player.sendMessage(MiniMessage.miniMessage().deserialize(
+                configManager.getRawMessage("quest_completed"),
+                Placeholder.unparsed("quest_name", quest.getName()),
+                Placeholder.unparsed("mine_name", mineName),
+                Placeholder.unparsed("mine_phase", phaseName),
+                Placeholder.unparsed("time_to_next", timeToNext),
+                Placeholder.unparsed("multiplier", String.format("%.2f", getPlayerMultiplier(playerId)))
         ));
     }
 
@@ -105,27 +103,17 @@ public class QuestManager implements Listener {
         ItemStack item = new ItemStack(quest.getMaterial());
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize(quest.getName())
-            ));
+            meta.displayName(MiniMessage.miniMessage().deserialize(quest.getName()));
             Map<String, Integer> progress = getPlayerProgress(player.getUniqueId());
             int current = progress.getOrDefault(quest.getId(), 0);
-            List<String> lore = new ArrayList<>();
+            List<Component> lore = new ArrayList<>();
             if (quest.getDescription() != null) {
-                lore.add(LegacyComponentSerializer.legacySection().serialize(
-                        MiniMessage.miniMessage().deserialize(quest.getDescription())
-                ));
+                lore.add(MiniMessage.miniMessage().deserialize(quest.getDescription()));
             }
-            lore.add(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize("<white>Прогресс: <green>" + current + "/" + quest.getAmount())
-            ));
-            lore.add(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize("<white>Награда: <green>$" + quest.getMoney())
-            ));
-            lore.add(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize("<white>Опыт: <green>" + quest.getExperience())
-            ));
-            meta.setLore(lore);
+            lore.add(MiniMessage.miniMessage().deserialize("<white>Прогресс: <green>" + current + "/" + quest.getAmount()));
+            lore.add(MiniMessage.miniMessage().deserialize("<white>Награда: <green>$" + quest.getMoney()));
+            lore.add(MiniMessage.miniMessage().deserialize("<white>Опыт: <green>" + quest.getExperience()));
+            meta.lore(lore);
             item.setItemMeta(meta);
         }
         return item;

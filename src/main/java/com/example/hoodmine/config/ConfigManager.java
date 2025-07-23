@@ -2,8 +2,6 @@ package com.example.hoodmine.config;
 
 import com.example.hoodmine.HoodMinePlugin;
 import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -55,7 +53,6 @@ public class ConfigManager {
         ConfigurationSection phasesSection = config.getConfigurationSection("mine.phases");
         if (phasesSection == null) {
             plugin.getLogger().warning("Секция mine.phases отсутствует в config.yml. Используется дефолтная фаза.");
-            // Добавляем дефолтную фазу, чтобы избежать пустого списка
             Map<String, Double> defaultSpawns = new HashMap<>();
             defaultSpawns.put("STONE", 1.0);
             phases.add(new Phase("<white>Дефолтная фаза", "<white>Дефолтная", defaultSpawns));
@@ -68,12 +65,16 @@ public class ConfigManager {
             ConfigurationSection spawnsSection = phasesSection.getConfigurationSection(key + ".spawns");
             if (spawnsSection != null) {
                 for (String material : spawnsSection.getKeys(false)) {
-                    spawns.put(material, spawnsSection.getDouble(material));
+                    if (Material.getMaterial(material) != null) {
+                        spawns.put(material, spawnsSection.getDouble(material));
+                    } else {
+                        plugin.getLogger().warning("Неверный материал в фазе " + key + ": " + material);
+                    }
                 }
             } else {
                 plugin.getLogger().warning("Секция spawns отсутствует для фазы: " + key);
             }
-            if (name != null && displayName != null) {
+            if (name != null && displayName != null && !spawns.isEmpty()) {
                 phases.add(new Phase(name, displayName, spawns));
             } else {
                 plugin.getLogger().warning("Некорректные данные для фазы: " + key);
@@ -103,30 +104,41 @@ public class ConfigManager {
                 List<String> lore = sellerSection.getStringList(key + ".lore");
                 sellerItems.put(key, new SellerItem(material, price, displayName, lore));
             }
+        } else {
+            plugin.getLogger().warning("Секция seller.items отсутствует в config.yml.");
         }
     }
 
     private void loadQuests() {
         quests.clear();
         ConfigurationSection questsSection = config.getConfigurationSection("quests");
-        if (questsSection != null) {
-            for (String key : questsSection.getKeys(false)) {
-                String id = questsSection.getString(key + ".id");
-                String name = questsSection.getString(key + ".name");
-                String description = questsSection.getString(key + ".description");
-                String materialName = questsSection.getString(key + ".material");
-                Material material = Material.getMaterial(materialName);
-                if (material == null) {
-                    plugin.getLogger().warning("Неверный материал для квеста: " + materialName);
-                    continue;
-                }
-                int amount = questsSection.getInt(key + ".amount");
-                ConfigurationSection rewardSection = questsSection.getConfigurationSection(key + ".reward");
-                double money = rewardSection != null ? rewardSection.getDouble("money") : 0.0;
-                int experience = rewardSection != null ? rewardSection.getInt("experience") : 0;
-                List<String> commands = rewardSection != null ? rewardSection.getStringList("commands") : new ArrayList<>();
-                quests.add(new Quest(id, name, description, material, amount, money, experience, commands));
+        if (questsSection == null) {
+            plugin.getLogger().warning("Секция quests отсутствует в config.yml.");
+            return;
+        }
+        for (String key : questsSection.getKeys(false)) {
+            String id = questsSection.getString(key + ".id");
+            String name = questsSection.getString(key + ".name");
+            String description = questsSection.getString(key + ".description");
+            String materialName = questsSection.getString(key + ".material");
+            Material material = Material.getMaterial(materialName);
+            if (material == null) {
+                plugin.getLogger().warning("Неверный материал для квеста " + key + ": " + materialName);
+                continue;
             }
+            int amount = questsSection.getInt(key + ".amount");
+            ConfigurationSection rewardSection = questsSection.getConfigurationSection(key + ".reward");
+            double money = rewardSection != null ? rewardSection.getDouble("money") : 0.0;
+            int experience = rewardSection != null ? rewardSection.getInt("experience") : 0;
+            List<String> commands = rewardSection != null ? rewardSection.getStringList("commands") : new ArrayList<>();
+            if (id != null && name != null && amount > 0) {
+                quests.add(new Quest(id, name, description, material, amount, money, experience, commands));
+            } else {
+                plugin.getLogger().warning("Некорректные данные для квеста: " + key);
+            }
+        }
+        if (quests.isEmpty()) {
+            plugin.getLogger().warning("Список квестов пуст.");
         }
     }
 
