@@ -6,22 +6,19 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
-// Класс для управления конфигурацией
+// Класс для управления конфигурацией плагина
 public class ConfigManager {
     private final HoodMinePlugin plugin;
     private FileConfiguration config;
     private FileConfiguration messages;
-    private List<Phase> phases;
-    private List<Quest> quests;
-    private Map<String, Double> sellPrices;
-    private RewardMultiplier rewardMultiplier;
-    private QuestsGUISettings questsGUISettings;
+    private File configFile;
+    private File messagesFile;
 
     public ConfigManager(HoodMinePlugin plugin) {
         this.plugin = plugin;
@@ -29,45 +26,56 @@ public class ConfigManager {
         loadMessages();
     }
 
-    // Загрузка конфигурации
+    // Загрузка config.yml
     private void loadConfig() {
-        plugin.saveDefaultConfig();
-        config = plugin.getConfig();
-        loadPhases();
-        loadQuests();
-        loadSellPrices();
-        loadRewardMultiplier();
-        loadQuestsGUISettings();
+        configFile = new File(plugin.getDataFolder(), "config.yml");
+        if (!configFile.exists()) {
+            plugin.saveResource("config.yml", false);
+        }
+        config = YamlConfiguration.loadConfiguration(configFile);
     }
 
     // Загрузка messages.yml
     private void loadMessages() {
-        File messagesFile = new File(plugin.getDataFolder(), "messages.yml");
+        messagesFile = new File(plugin.getDataFolder(), "messages.yml");
         if (!messagesFile.exists()) {
             plugin.saveResource("messages.yml", false);
         }
         messages = YamlConfiguration.loadConfiguration(messagesFile);
     }
 
-    // Получение сообщения
-    public String getMessage(String key) {
-        return messages.getString(key, "<red>Сообщение не найдено: " + key);
+    // Получение названия шахты
+    public String getMineName() {
+        return config.getString("mine_name", "Шахта");
     }
 
-    // Получение сырого сообщения
-    public String getRawMessage(String key) {
-        return messages.getString(key, "<red>Сообщение не найдено: " + key);
-    }
-
-    // Установка имени шахты
+    // Установка названия шахты
     public void setMineName(String name) {
         config.set("mine_name", name);
-        plugin.saveConfig();
+        try {
+            config.save(configFile);
+        } catch (IOException e) {
+            plugin.getLogger().severe("Ошибка сохранения config.yml: " + e.getMessage());
+        }
     }
 
-    // Получение имени шахты
-    public String getMineName() {
-        return config.getString("mine_name", "HoodMine");
+    // Получение списка фаз
+    public List<Phase> getPhases() {
+        List<Phase> phases = new ArrayList<>();
+        ConfigurationSection phasesSection = config.getConfigurationSection("phases");
+        if (phasesSection == null) return phases;
+        for (String key : phasesSection.getKeys(false)) {
+            String displayName = phasesSection.getString(key + ".display_name");
+            ConfigurationSection spawnsSection = phasesSection.getConfigurationSection(key + ".spawns");
+            Map<String, Double> spawns = new HashMap<>();
+            if (spawnsSection != null) {
+                for (String material : spawnsSection.getKeys(false)) {
+                    spawns.put(material, spawnsSection.getDouble(material));
+                }
+            }
+            phases.add(new Phase(key, displayName, spawns));
+        }
+        return phases;
     }
 
     // Получение интервала таймера
@@ -75,129 +83,112 @@ public class ConfigManager {
         return config.getLong("timer_interval", 600);
     }
 
-    // Загрузка фаз
-    private void loadPhases() {
-        phases = new ArrayList<>();
-        ConfigurationSection phasesSection = config.getConfigurationSection("phases");
-        if (phasesSection != null) {
-            for (String phaseId : phasesSection.getKeys(false)) {
-                ConfigurationSection phaseSection = phasesSection.getConfigurationSection(phaseId);
-                if (phaseSection != null) {
-                    String displayName = phaseSection.getString("display_name", phaseId);
-                    long duration = phaseSection.getLong("duration", 600);
-                    Map<String, Double> spawns = new HashMap<>();
-                    ConfigurationSection spawnsSection = phaseSection.getConfigurationSection("spawns");
-                    if (spawnsSection != null) {
-                        for (String material : spawnsSection.getKeys(false)) {
-                            spawns.put(material, spawnsSection.getDouble(material));
-                        }
-                    }
-                    phases.add(new Phase(phaseId, displayName, duration, spawns));
-                }
-            }
+    // Получение множителя наград
+    public RewardMultiplier getRewardMultiplier() {
+        ConfigurationSection section = config.getConfigurationSection("reward_multiplier");
+        if (section == null) {
+            return new RewardMultiplier(1.0, 0.1, 2.0);
         }
-    }
-
-    // Загрузка квестов
-    private void loadQuests() {
-        quests = new ArrayList<>();
-        ConfigurationSection questsSection = config.getConfigurationSection("quests");
-        if (questsSection != null) {
-            for (String questId : questsSection.getKeys(false)) {
-                ConfigurationSection questSection = questsSection.getConfigurationSection(questId);
-                if (questSection != null) {
-                    String title = questSection.getString("title", questId);
-                    String targetBlock = questSection.getString("target_block", "STONE");
-                    String displayName = questSection.getString("display_name", targetBlock);
-                    int amount = questSection.getInt("amount", 1);
-                    List<String> reward = questSection.getStringList("reward");
-                    quests.add(new Quest(questId, title, targetBlock, displayName, amount, reward));
-                }
-            }
-        }
-    }
-
-    // Загрузка цен продажи
-    private void loadSellPrices() {
-        sellPrices = new HashMap<>();
-        ConfigurationSection pricesSection = config.getConfigurationSection("sell_prices");
-        if (pricesSection != null) {
-            for (String material : pricesSection.getKeys(false)) {
-                sellPrices.put(material, pricesSection.getDouble(material));
-            }
-        }
-    }
-
-    // Загрузка множителя наград
-    private void loadRewardMultiplier() {
-        ConfigurationSection multiplierSection = config.getConfigurationSection("reward_multiplier");
-        if (multiplierSection != null) {
-            double base = multiplierSection.getDouble("base", 1.0);
-            double perQuest = multiplierSection.getDouble("per_quest", 0.1);
-            double max = multiplierSection.getDouble("max", 2.0);
-            rewardMultiplier = new RewardMultiplier(base, perQuest, max);
-        } else {
-            rewardMultiplier = new RewardMultiplier(1.0, 0.1, 2.0);
-        }
-    }
-
-    // Загрузка настроек GUI квестов
-    private void loadQuestsGUISettings() {
-        ConfigurationSection guiSection = config.getConfigurationSection("quests_gui");
-        if (guiSection != null) {
-            int size = guiSection.getInt("size", 27);
-            List<Integer> questSlots = guiSection.getIntegerList("quest_slots");
-            int questsPerPage = guiSection.getInt("quests_per_page", 9);
-            int nextPageSlot = guiSection.getInt("next_page_slot", -1);
-            int prevPageSlot = guiSection.getInt("prev_page_slot", -1);
-            String nextPageMaterial = guiSection.getString("next_page_material", "ARROW");
-            String prevPageMaterial = guiSection.getString("prev_page_material", "ARROW");
-            String nextPageName = guiSection.getString("next_page_name", "<green>Next Page");
-            String prevPageName = guiSection.getString("prev_page_name", "<green>Previous Page");
-            questsGUISettings = new QuestsGUISettings(size, questSlots, questsPerPage, nextPageSlot, prevPageSlot,
-                    nextPageMaterial, prevPageMaterial, nextPageName, prevPageName);
-        } else {
-            questsGUISettings = new QuestsGUISettings(27, List.of(10, 11, 12, 13, 14, 15, 16, 19, 20), 9, 26, 18,
-                    "ARROW", "ARROW", "<green>Next Page", "<green>Previous Page");
-        }
-    }
-
-    // Получение фаз
-    public List<Phase> getPhases() {
-        return phases;
-    }
-
-    // Получение квестов
-    public List<Quest> getQuests() {
-        return quests;
+        return new RewardMultiplier(
+                section.getDouble("base", 1.0),
+                section.getDouble("per_quest", 0.1),
+                section.getDouble("max", 2.0)
+        );
     }
 
     // Получение цен продажи
     public Map<String, Double> getSellPrices() {
+        Map<String, Double> sellPrices = new HashMap<>();
+        ConfigurationSection section = config.getConfigurationSection("sell_prices");
+        if (section != null) {
+            for (String material : section.getKeys(false)) {
+                sellPrices.put(material, section.getDouble(material));
+            }
+        }
         return sellPrices;
     }
 
-    // Получение множителя наград
-    public RewardMultiplier getRewardMultiplier() {
-        return rewardMultiplier;
+    // Получение списка квестов
+    public List<Quest> getQuests() {
+        List<Quest> quests = new ArrayList<>();
+        ConfigurationSection questsSection = config.getConfigurationSection("quests");
+        if (questsSection == null) return quests;
+        for (String key : questsSection.getKeys(false)) {
+            String id = questsSection.getString(key + ".id");
+            String title = questsSection.getString(key + ".title");
+            String targetBlock = questsSection.getString(key + ".target_block");
+            String displayName = questsSection.getString(key + ".display_name");
+            int amount = questsSection.getInt(key + ".amount");
+            List<String> reward = questsSection.getStringList(key + ".reward");
+            quests.add(new Quest(id, title, targetBlock, displayName, amount, reward));
+        }
+        return quests;
     }
 
     // Получение настроек GUI квестов
     public QuestsGUISettings getQuestsGUISettings() {
-        return questsGUISettings;
+        ConfigurationSection section = config.getConfigurationSection("quests_gui");
+        if (section == null) {
+            return new QuestsGUISettings(27, new ArrayList<>(), -1, "ARROW", "<green>Следующая страница", -1, "ARROW", "<green>Предыдущая страница");
+        }
+        List<Integer> questSlots = section.getIntegerList("quest_slots");
+        int size = section.getInt("size", 27);
+        int nextPageSlot = section.getInt("next_page_slot", -1);
+        String nextPageMaterial = section.getString("next_page_material", "ARROW");
+        String nextPageName = section.getString("next_page_name", "<green>Следующая страница");
+        int prevPageSlot = section.getInt("prev_page_slot", -1);
+        String prevPageMaterial = section.getString("prev_page_material", "ARROW");
+        String prevPageName = section.getString("prev_page_name", "<green>Предыдущая страница");
+        return new QuestsGUISettings(size, questSlots, nextPageSlot, nextPageMaterial, nextPageName, prevPageSlot, prevPageMaterial, prevPageName);
     }
 
-    // Класс для хранения данных о фазе
+    // Получение настроек GUI скупщика
+    public SellerGUISettings getSellerGUISettings() {
+        ConfigurationSection section = config.getConfigurationSection("seller_gui");
+        if (section == null) {
+            return new SellerGUISettings(27, new ArrayList<>(), -1, "ARROW", "<green>Следующая страница", -1, "ARROW", "<green>Предыдущая страница");
+        }
+        List<Integer> itemSlots = section.getIntegerList("item_slots");
+        int size = section.getInt("size", 27);
+        int nextPageSlot = section.getInt("next_page_slot", -1);
+        String nextPageMaterial = section.getString("next_page_material", "ARROW");
+        String nextPageName = section.getString("next_page_name", "<green>Следующая страница");
+        int prevPageSlot = section.getInt("prev_page_slot", -1);
+        String prevPageMaterial = section.getString("prev_page_material", "ARROW");
+        String prevPageName = section.getString("prev_page_name", "<green>Предыдущая страница");
+        return new SellerGUISettings(size, itemSlots, nextPageSlot, nextPageMaterial, nextPageName, prevPageSlot, prevPageMaterial, prevPageName);
+    }
+
+    // Получение списка предметов для продажи
+    public List<SellItem> getSellItems() {
+        List<SellItem> sellItems = new ArrayList<>();
+        ConfigurationSection itemsSection = config.getConfigurationSection("sell_items");
+        if (itemsSection == null) return sellItems;
+        for (String key : itemsSection.getKeys(false)) {
+            String material = itemsSection.getString(key + ".material");
+            String displayName = itemsSection.getString(key + ".display_name");
+            double price = itemsSection.getDouble(key + ".price");
+            int amount = itemsSection.getInt(key + ".amount");
+            List<String> commands = itemsSection.getStringList(key + ".commands");
+            sellItems.add(new SellItem(material, displayName, price, amount, commands));
+        }
+        return sellItems;
+    }
+
+    // Получение сообщения из messages.yml
+    public String getRawMessage(String key) {
+        return messages.getString(key, "Сообщение не найдено: " + key);
+    }
+
+    // Структура для фаз
     public static class Phase {
         private final String id;
         private final String displayName;
-        private final long duration;
         private final Map<String, Double> spawns;
 
-        public Phase(String id, String displayName, long duration, Map<String, Double> spawns) {
+        public Phase(String id, String displayName, Map<String, Double> spawns) {
             this.id = id;
             this.displayName = displayName;
-            this.duration = duration;
             this.spawns = spawns;
         }
 
@@ -209,16 +200,37 @@ public class ConfigManager {
             return displayName;
         }
 
-        public long getDuration() {
-            return duration;
-        }
-
         public Map<String, Double> getSpawns() {
             return spawns;
         }
     }
 
-    // Класс для хранения данных о квесте
+    // Структура для множителя наград
+    public static class RewardMultiplier {
+        private final double base;
+        private final double perQuest;
+        private final double max;
+
+        public RewardMultiplier(double base, double perQuest, double max) {
+            this.base = base;
+            this.perQuest = perQuest;
+            this.max = max;
+        }
+
+        public double getBase() {
+            return base;
+        }
+
+        public double getPerQuest() {
+            return perQuest;
+        }
+
+        public double getMax() {
+            return max;
+        }
+    }
+
+    // Структура для квестов
     public static class Quest {
         private final String id;
         private final String title;
@@ -261,53 +273,26 @@ public class ConfigManager {
         }
     }
 
-    // Класс для хранения множителя наград
-    public static class RewardMultiplier {
-        private final double base;
-        private final double perQuest;
-        private final double max;
-
-        public RewardMultiplier(double base, double perQuest, double max) {
-            this.base = base;
-            this.perQuest = perQuest;
-            this.max = max;
-        }
-
-        public double getBase() {
-            return base;
-        }
-
-        public double getPerQuest() {
-            return perQuest;
-        }
-
-        public double getMax() {
-            return max;
-        }
-    }
-
-    // Класс для хранения настроек GUI квестов
+    // Структура для настроек GUI квестов
     public static class QuestsGUISettings {
         private final int size;
         private final List<Integer> questSlots;
-        private final int questsPerPage;
         private final int nextPageSlot;
-        private final int prevPageSlot;
         private final String nextPageMaterial;
-        private final String prevPageMaterial;
         private final String nextPageName;
+        private final int prevPageSlot;
+        private final String prevPageMaterial;
         private final String prevPageName;
 
-        public QuestsGUISettings(int size, List<Integer> questSlots, int questsPerPage, int nextPageSlot, int prevPageSlot,
-                                 String nextPageMaterial, String prevPageMaterial, String nextPageName, String prevPageName) {
+        public QuestsGUISettings(int size, List<Integer> questSlots, int nextPageSlot, String nextPageMaterial, String nextPageName,
+                                 int prevPageSlot, String prevPageMaterial, String prevPageName) {
             this.size = size;
             this.questSlots = questSlots;
-            this.questsPerPage = questsPerPage;
             this.nextPageSlot = nextPageSlot;
-            this.prevPageSlot = prevPageSlot;
             this.nextPageMaterial = nextPageMaterial;
-            this.prevPageMaterial = prevPageMaterial;
             this.nextPageName = nextPageName;
+            this.prevPageSlot = prevPageSlot;
+            this.prevPageMaterial = prevPageMaterial;
             this.prevPageName = prevPageName;
         }
 
@@ -320,31 +305,128 @@ public class ConfigManager {
         }
 
         public int getQuestsPerPage() {
-            return questsPerPage;
+            return questSlots.size();
         }
 
         public int getNextPageSlot() {
             return nextPageSlot;
         }
 
-        public int getPrevPageSlot() {
-            return prevPageSlot;
-        }
-
         public String getNextPageMaterial() {
             return nextPageMaterial;
-        }
-
-        public String getPrevPageMaterial() {
-            return prevPageMaterial;
         }
 
         public String getNextPageName() {
             return nextPageName;
         }
 
+        public int getPrevPageSlot() {
+            return prevPageSlot;
+        }
+
+        public String getPrevPageMaterial() {
+            return prevPageMaterial;
+        }
+
         public String getPrevPageName() {
             return prevPageName;
+        }
+    }
+
+    // Структура для настроек GUI скупщика
+    public static class SellerGUISettings {
+        private final int size;
+        private final List<Integer> itemSlots;
+        private final int nextPageSlot;
+        private final String nextPageMaterial;
+        private final String nextPageName;
+        private final int prevPageSlot;
+        private final String prevPageMaterial;
+        private final String prevPageName;
+
+        public SellerGUISettings(int size, List<Integer> itemSlots, int nextPageSlot, String nextPageMaterial, String nextPageName,
+                                 int prevPageSlot, String prevPageMaterial, String prevPageName) {
+            this.size = size;
+            this.itemSlots = itemSlots;
+            this.nextPageSlot = nextPageSlot;
+            this.nextPageMaterial = nextPageMaterial;
+            this.nextPageName = nextPageName;
+            this.prevPageSlot = prevPageSlot;
+            this.prevPageMaterial = prevPageMaterial;
+            this.prevPageName = prevPageName;
+        }
+
+        public int getSize() {
+            return size;
+        }
+
+        public List<Integer> getItemSlots() {
+            return itemSlots;
+        }
+
+        public int getItemsPerPage() {
+            return itemSlots.size();
+        }
+
+        public int getNextPageSlot() {
+            return nextPageSlot;
+        }
+
+        public String getNextPageMaterial() {
+            return nextPageMaterial;
+        }
+
+        public String getNextPageName() {
+            return nextPageName;
+        }
+
+        public int getPrevPageSlot() {
+            return prevPageSlot;
+        }
+
+        public String getPrevPageMaterial() {
+            return prevPageMaterial;
+        }
+
+        public String getPrevPageName() {
+            return prevPageName;
+        }
+    }
+
+    // Структура для предметов продажи
+    public static class SellItem {
+        private final String material;
+        private final String displayName;
+        private final double price;
+        private final int amount;
+        private final List<String> commands;
+
+        public SellItem(String material, String displayName, double price, int amount, List<String> commands) {
+            this.material = material;
+            this.displayName = displayName;
+            this.price = price;
+            this.amount = amount;
+            this.commands = commands;
+        }
+
+        public String getMaterial() {
+            return material;
+        }
+
+        public String getDisplayName() {
+            return displayName;
+        }
+
+        public double getPrice() {
+            return price;
+        }
+
+        public int getAmount() {
+            return amount;
+        }
+
+        public List<String> getCommands() {
+            return commands;
         }
     }
 }

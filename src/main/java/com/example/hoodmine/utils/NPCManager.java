@@ -3,6 +3,7 @@ package com.example.hoodmine.utils;
 import com.example.hoodmine.HoodMinePlugin;
 import com.example.hoodmine.commands.CommandHandler;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -42,7 +43,10 @@ public class NPCManager implements Listener {
         Location location = player.getLocation();
         Villager villager = location.getWorld().spawn(location, Villager.class, v -> {
             String name = LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize("<green>Шахтёр NPC")
+                    MiniMessage.miniMessage().deserialize("<green>Шахтёр NPC",
+                            Placeholder.unparsed("mine_name", plugin.getConfigManager().getMineName()),
+                            Placeholder.unparsed("mine_phase", plugin.getRegionManager().getCurrentPhase() != null ? plugin.getRegionManager().getCurrentPhase().getDisplayName() : "Не установлена"),
+                            Placeholder.unparsed("time_to_next", String.valueOf(plugin.getRegionManager().getTimeToNextPhase())))
             );
             v.setCustomName(name);
             v.setCustomNameVisible(true);
@@ -53,7 +57,10 @@ public class NPCManager implements Listener {
         npcLocations.put(villager.getUniqueId(), location);
         saveNPCs();
         player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                MiniMessage.miniMessage().deserialize("<green>NPC успешно создан!")
+                MiniMessage.miniMessage().deserialize("<green>NPC успешно создан!",
+                        Placeholder.unparsed("mine_name", plugin.getConfigManager().getMineName()),
+                        Placeholder.unparsed("mine_phase", plugin.getRegionManager().getCurrentPhase() != null ? plugin.getRegionManager().getCurrentPhase().getDisplayName() : "Не установлена"),
+                        Placeholder.unparsed("time_to_next", String.valueOf(plugin.getRegionManager().getTimeToNextPhase())))
         ));
     }
 
@@ -70,7 +77,10 @@ public class NPCManager implements Listener {
                     v.remove();
                     saveNPCs();
                     player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                            MiniMessage.miniMessage().deserialize("<green>NPC успешно удалён!")
+                            MiniMessage.miniMessage().deserialize("<green>NPC успешно удалён!",
+                                    Placeholder.unparsed("mine_name", plugin.getConfigManager().getMineName()),
+                                    Placeholder.unparsed("mine_phase", plugin.getRegionManager().getCurrentPhase() != null ? plugin.getRegionManager().getCurrentPhase().getDisplayName() : "Не установлена"),
+                                    Placeholder.unparsed("time_to_next", String.valueOf(plugin.getRegionManager().getTimeToNextPhase())))
                     ));
                 });
     }
@@ -79,7 +89,7 @@ public class NPCManager implements Listener {
     private void saveNPCs() {
         File file = new File(plugin.getDataFolder(), "instances.yml");
         FileConfiguration config = YamlConfiguration.loadConfiguration(file);
-        config.set("npcs", null); // Очищаем старые данные
+        config.set("npcs", null);
         int index = 0;
         for (Map.Entry<UUID, Location> entry : npcLocations.entrySet()) {
             Location loc = entry.getValue();
@@ -120,7 +130,10 @@ public class NPCManager implements Listener {
             Location location = new Location(world, x, y, z);
             Villager villager = world.spawn(location, Villager.class, v -> {
                 String name = LegacyComponentSerializer.legacySection().serialize(
-                        MiniMessage.miniMessage().deserialize("<green>Шахтёр NPC")
+                        MiniMessage.miniMessage().deserialize("<green>Шахтёр NPC",
+                                Placeholder.unparsed("mine_name", plugin.getConfigManager().getMineName()),
+                                Placeholder.unparsed("mine_phase", plugin.getRegionManager().getCurrentPhase() != null ? plugin.getRegionManager().getCurrentPhase().getDisplayName() : "Не установлена"),
+                                Placeholder.unparsed("time_to_next", String.valueOf(plugin.getRegionManager().getTimeToNextPhase())))
                 );
                 v.setCustomName(name);
                 v.setCustomNameVisible(true);

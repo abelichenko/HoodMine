@@ -6,6 +6,7 @@ import com.example.hoodmine.quests.QuestManager;
 import com.example.hoodmine.utils.NPCManager;
 import com.example.hoodmine.utils.RegionManager;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -36,7 +37,10 @@ public class HoodMineCommand implements CommandExecutor {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
             sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("usage"))
+                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("usage"),
+                            Placeholder.unparsed("mine_name", configManager.getMineName()),
+                            Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                            Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
             ));
             return true;
         }
@@ -46,13 +50,19 @@ public class HoodMineCommand implements CommandExecutor {
             case "setregion":
                 if (!(sender instanceof Player)) {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("player_only"))
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("player_only"),
+                                    Placeholder.unparsed("mine_name", configManager.getMineName()),
+                                    Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                                    Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
                     ));
                     return true;
                 }
                 if (!sender.hasPermission("hoodmine.admin")) {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_permission"))
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_permission"),
+                                    Placeholder.unparsed("mine_name", configManager.getMineName()),
+                                    Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                                    Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
                     ));
                     return true;
                 }
@@ -61,13 +71,19 @@ public class HoodMineCommand implements CommandExecutor {
             case "setname":
                 if (!sender.hasPermission("hoodmine.admin")) {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_permission"))
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_permission"),
+                                    Placeholder.unparsed("mine_name", configManager.getMineName()),
+                                    Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                                    Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
                     ));
                     return true;
                 }
                 if (args.length < 2) {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("setname_usage"))
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("setname_usage"),
+                                    Placeholder.unparsed("mine_name", configManager.getMineName()),
+                                    Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                                    Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
                     ));
                     return true;
                 }
@@ -78,13 +94,19 @@ public class HoodMineCommand implements CommandExecutor {
             case "quests":
                 if (!(sender instanceof Player)) {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("player_only"))
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("player_only"),
+                                    Placeholder.unparsed("mine_name", configManager.getMineName()),
+                                    Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                                    Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
                     ));
                     return true;
                 }
                 if (!sender.hasPermission("hoodmine.quests")) {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_permission"))
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_permission"),
+                                    Placeholder.unparsed("mine_name", configManager.getMineName()),
+                                    Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                                    Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
                     ));
                     return true;
                 }
@@ -94,29 +116,63 @@ public class HoodMineCommand implements CommandExecutor {
             case "sell":
                 if (!(sender instanceof Player)) {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("player_only"))
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("player_only"),
+                                    Placeholder.unparsed("mine_name", configManager.getMineName()),
+                                    Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                                    Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
                     ));
                     return true;
                 }
                 if (!sender.hasPermission("hoodmine.sell")) {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_permission"))
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_permission"),
+                                    Placeholder.unparsed("mine_name", configManager.getMineName()),
+                                    Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                                    Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
                     ));
                     return true;
                 }
                 handler.handleSell((Player) sender, args.length > 1 ? new String[]{args[1], args.length > 2 ? args[2] : "1"} : new String[]{"", ""});
                 return true;
 
+            case "seller":
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("player_only"),
+                                    Placeholder.unparsed("mine_name", configManager.getMineName()),
+                                    Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                                    Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
+                    ));
+                    return true;
+                }
+                if (!sender.hasPermission("hoodmine.sell")) {
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_permission"),
+                                    Placeholder.unparsed("mine_name", configManager.getMineName()),
+                                    Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                                    Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
+                    ));
+                    return true;
+                }
+                handler.handleSeller((Player) sender);
+                return true;
+
             case "reset":
                 if (!(sender instanceof Player)) {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("player_only"))
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("player_only"),
+                                    Placeholder.unparsed("mine_name", configManager.getMineName()),
+                                    Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                                    Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
                     ));
                     return true;
                 }
                 if (!sender.hasPermission("hoodmine.admin")) {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_permission"))
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_permission"),
+                                    Placeholder.unparsed("mine_name", configManager.getMineName()),
+                                    Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                                    Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
                     ));
                     return true;
                 }
@@ -126,13 +182,19 @@ public class HoodMineCommand implements CommandExecutor {
             case "info":
                 if (!(sender instanceof Player)) {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("player_only"))
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("player_only"),
+                                    Placeholder.unparsed("mine_name", configManager.getMineName()),
+                                    Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                                    Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
                     ));
                     return true;
                 }
                 if (!sender.hasPermission("hoodmine.info")) {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_permission"))
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_permission"),
+                                    Placeholder.unparsed("mine_name", configManager.getMineName()),
+                                    Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                                    Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
                     ));
                     return true;
                 }
@@ -142,19 +204,28 @@ public class HoodMineCommand implements CommandExecutor {
             case "npc":
                 if (!(sender instanceof Player)) {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("player_only"))
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("player_only"),
+                                    Placeholder.unparsed("mine_name", configManager.getMineName()),
+                                    Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                                    Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
                     ));
                     return true;
                 }
                 if (!sender.hasPermission("hoodmine.admin")) {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_permission"))
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_permission"),
+                                    Placeholder.unparsed("mine_name", configManager.getMineName()),
+                                    Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                                    Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
                     ));
                     return true;
                 }
                 if (args.length < 2 || (!args[1].equalsIgnoreCase("spawn") && !args[1].equalsIgnoreCase("remove"))) {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("npc_usage"))
+                            MiniMessage.miniMessage().deserialize(configManager.getRawMessage("npc_usage"),
+                                    Placeholder.unparsed("mine_name", configManager.getMineName()),
+                                    Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                                    Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
                     ));
                     return true;
                 }
@@ -168,7 +239,10 @@ public class HoodMineCommand implements CommandExecutor {
 
             default:
                 sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                        MiniMessage.miniMessage().deserialize(configManager.getRawMessage("unknown_command"))
+                        MiniMessage.miniMessage().deserialize(configManager.getRawMessage("unknown_command"),
+                                Placeholder.unparsed("mine_name", configManager.getMineName()),
+                                Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                                Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
                 ));
                 return true;
         }

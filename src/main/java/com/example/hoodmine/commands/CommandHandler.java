@@ -40,7 +40,10 @@ public class CommandHandler {
         sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
                 MiniMessage.miniMessage().deserialize(
                         configManager.getRawMessage("setname_ok"),
-                        Placeholder.unparsed("name", name)
+                        Placeholder.unparsed("name", name),
+                        Placeholder.unparsed("mine_name", configManager.getMineName()),
+                        Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                        Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase()))
                 )
         ));
     }
@@ -54,7 +57,10 @@ public class CommandHandler {
     public void handleSell(Player player, String[] args) {
         if (args.length < 2) {
             player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_usage"))
+                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_usage"),
+                            Placeholder.unparsed("mine_name", configManager.getMineName()),
+                            Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                            Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
             ));
             return;
         }
@@ -63,7 +69,10 @@ public class CommandHandler {
         Map<String, Double> sellPrices = configManager.getSellPrices();
         if (!sellPrices.containsKey(materialName)) {
             player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_invalid_material"))
+                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_invalid_material"),
+                            Placeholder.unparsed("mine_name", configManager.getMineName()),
+                            Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                            Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
             ));
             return;
         }
@@ -73,13 +82,19 @@ public class CommandHandler {
             amount = Integer.parseInt(args[1]);
             if (amount <= 0) {
                 player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                        MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_invalid_amount"))
+                        MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_invalid_amount"),
+                                Placeholder.unparsed("mine_name", configManager.getMineName()),
+                                Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                                Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
                 ));
                 return;
             }
         } catch (NumberFormatException e) {
             player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_invalid_amount"))
+                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_invalid_amount"),
+                            Placeholder.unparsed("mine_name", configManager.getMineName()),
+                            Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                            Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
             ));
             return;
         }
@@ -87,7 +102,10 @@ public class CommandHandler {
         Material material = Material.getMaterial(materialName);
         if (material == null) {
             player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_invalid_material"))
+                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_invalid_material"),
+                            Placeholder.unparsed("mine_name", configManager.getMineName()),
+                            Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                            Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
             ));
             return;
         }
@@ -101,7 +119,6 @@ public class CommandHandler {
         }
 
         if (totalAmount < amount) {
-            // Используем display_name из квестов, если доступно
             String displayName = configManager.getQuests().stream()
                     .filter(q -> q.getTargetBlock().equals(materialName))
                     .findFirst()
@@ -110,7 +127,10 @@ public class CommandHandler {
             player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
                     MiniMessage.miniMessage().deserialize(
                             configManager.getRawMessage("sell_not_enough"),
-                            Placeholder.unparsed("material", displayName)
+                            Placeholder.unparsed("material", displayName),
+                            Placeholder.unparsed("mine_name", configManager.getMineName()),
+                            Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                            Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase()))
                     )
             ));
             return;
@@ -136,7 +156,6 @@ public class CommandHandler {
         double multiplier = questManager.calculateRewardMultiplier(player);
         double finalPrice = price * multiplier;
         Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "eco give " + player.getName() + " " + finalPrice);
-        // Используем display_name для сообщения
         String displayName = configManager.getQuests().stream()
                 .filter(q -> q.getTargetBlock().equals(materialName))
                 .findFirst()
@@ -147,22 +166,36 @@ public class CommandHandler {
                         configManager.getRawMessage("sell_success"),
                         Placeholder.unparsed("amount", String.valueOf(amount)),
                         Placeholder.unparsed("material", displayName),
-                        Placeholder.unparsed("money", String.format("%.2f", finalPrice))
+                        Placeholder.unparsed("money", String.format("%.2f", finalPrice)),
+                        Placeholder.unparsed("mine_name", configManager.getMineName()),
+                        Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                        Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase()))
                 )
         ));
+    }
+
+    // Обработка команды /hoodmine seller
+    public void handleSeller(Player player) {
+        questManager.openSellerGUI(player, 0);
     }
 
     // Обработка команды /hoodmine reset
     public void handleReset(Player player) {
         if (regionManager.getMineRegion() == null) {
             player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_region"))
+                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_region"),
+                            Placeholder.unparsed("mine_name", configManager.getMineName()),
+                            Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                            Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
             ));
             return;
         }
         regionManager.resetMine();
         player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                MiniMessage.miniMessage().deserialize(configManager.getRawMessage("reset_success"))
+                MiniMessage.miniMessage().deserialize(configManager.getRawMessage("reset_success"),
+                        Placeholder.unparsed("mine_name", configManager.getMineName()),
+                        Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
+                        Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase())))
         ));
     }
 
@@ -175,8 +208,8 @@ public class CommandHandler {
                 MiniMessage.miniMessage().deserialize(
                         configManager.getRawMessage("info_message"),
                         Placeholder.unparsed("mine_name", configManager.getMineName()),
-                        Placeholder.unparsed("phase", phaseName),
-                        Placeholder.unparsed("time", String.valueOf(timeToNext))
+                        Placeholder.unparsed("mine_phase", phaseName),
+                        Placeholder.unparsed("time_to_next", String.valueOf(timeToNext))
                 )
         ));
     }

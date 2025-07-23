@@ -1,4 +1,4 @@
-mine_name: "HoodMine"
+mine_name: Шахта
 timer_interval: 600
 reward_multiplier:
   base: 1.0
@@ -6,47 +6,71 @@ reward_multiplier:
   max: 2.0
 phases:
   common:
-    display_name: "#AAAAAA[Обычная фаза]"
-    duration: 1800
+    display_name: '<green>Обычная фаза'
     spawns:
-      COAL_ORE: 0.30
-      IRON_ORE: 0.15
-      GOLD_ORE: 0.05
+      STONE: 0.7
+      COAL_ORE: 0.2
+      IRON_ORE: 0.1
   rare:
-    display_name: "#55FFFF[Редкая фаза]"
-    duration: 1200
+    display_name: '<blue>Редкая фаза'
     spawns:
-      COAL_ORE: 0.10
-      IRON_ORE: 0.20
-      GOLD_ORE: 0.10
-      DIAMOND_ORE: 0.02
-  epic:
-    display_name: "#AA00AA[Эпическая фаза]"
-    duration: 600
-    spawns:
-      IRON_ORE: 0.10
-      GOLD_ORE: 0.10
+      STONE: 0.6
+      COAL_ORE: 0.2
+      IRON_ORE: 0.15
       DIAMOND_ORE: 0.05
-      EMERALD_ORE: 0.01
+  epic:
+    display_name: '<#AA00AA>Эпическая фаза'
+    spawns:
+      STONE: 0.5
+      COAL_ORE: 0.2
+      IRON_ORE: 0.2
+      DIAMOND_ORE: 0.1
+sell_prices:
+  COAL_ORE: 1.0
+  IRON_ORE: 2.0
+  DIAMOND_ORE: 5.0
 quests:
-  quest1:
-    title: "#FFFF55Добудьте 1000 алмазной руды"
-    target_block: "DIAMOND_ORE"
-    display_name: "Алмазная руда"
+  - id: diamond_ore_quest
+    title: '#FFFF55Добудьте 1000 алмазной руды'
+    target_block: DIAMOND_ORE
+    display_name: Алмазная руда
     amount: 1000
     reward:
-      - "eco give %play% 10101010"
-sell_prices:
-  DIAMOND_ORE: 50
-  IRON_ORE: 10
-  GOLD_ORE: 30
+      - eco give %play% 100
 quests_gui:
   size: 27
-  quest_slots: [10, 11, 12, 13, 14, 15, 16, 19, 20]
-  quests_per_page: 9
+  quest_slots: [10, 11, 12, 13, 14, 15, 16]
   next_page_slot: 26
+  next_page_material: ARROW
+  next_page_name: <green>Следующая страница
   prev_page_slot: 18
-  next_page_material: "ARROW"
-  prev_page_material: "ARROW"
-  next_page_name: "<green>Следующая страница"
-  prev_page_name: "<green>Предыдущая страница"
+  prev_page_material: ARROW
+  prev_page_name: <green>Предыдущая страница
+seller_gui:
+  size: 27
+  item_slots: [10, 11, 12, 13, 14, 15, 16]
+  next_page_slot: 26
+  next_page_material: ARROW
+  next_page_name: <green>Следующая страница
+  prev_page_slot: 18
+  prev_page_material: ARROW
+  prev_page_name: <green>Предыдущая страница
+sell_items:
+  - material: COAL_ORE
+    display_name: Угольная руда
+    price: 1.0
+    amount: 64
+    commands:
+      - eco give %play% %money%
+  - material: IRON_ORE
+    display_name: Железная руда
+    price: 2.0
+    amount: 32
+    commands:
+      - eco give %play% %money%
+  - material: DIAMOND_ORE
+    display_name: Алмазная руда
+    price: 5.0
+    amount: 16
+    commands:
+      - eco give %play% %money%
