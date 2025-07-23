@@ -12,9 +12,9 @@ import org.jetbrains.annotations.NotNull;
 public class PlaceholderHook extends PlaceholderExpansion {
     private final HoodMinePlugin plugin;
     private final ConfigManager configManager;
-    private final RegionManager regionManager;
+    private final RegionManagerMine regionManager;
 
-    public PlaceholderHook(HoodMinePlugin plugin, ConfigManager configManager, RegionManager regionManager) {
+    public PlaceholderHook(HoodMinePlugin plugin, ConfigManager configManager, RegionManagerMine regionManager) {
         this.plugin = plugin;
         this.configManager = configManager;
         this.regionManager = regionManager;

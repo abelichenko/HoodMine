@@ -4,7 +4,7 @@ import com.example.hoodmine.HoodMinePlugin;
 import com.example.hoodmine.config.ConfigManager;
 import com.example.hoodmine.quests.QuestManager;
 import com.example.hoodmine.utils.NPCManager;
-import com.example.hoodmine.utils.RegionManager;
+import com.example.hoodmine.utils.RegionManagerMine;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
@@ -17,12 +17,12 @@ import org.bukkit.entity.Player;
 public class HoodMineCommand implements CommandExecutor {
     private final HoodMinePlugin plugin;
     private final ConfigManager configManager;
-    private final RegionManager regionManager;
+    private final RegionManagerMine regionManager;
     private final QuestManager questManager;
     private final NPCManager npcManager;
     private final CommandHandler handler;
 
-    public HoodMineCommand(HoodMinePlugin plugin, ConfigManager configManager, RegionManager regionManager, QuestManager questManager) {
+    public HoodMineCommand(HoodMinePlugin plugin, ConfigManager configManager, RegionManagerMine regionManager, QuestManager questManager) {
         this.plugin = plugin;
         this.configManager = configManager;
         this.regionManager = regionManager;

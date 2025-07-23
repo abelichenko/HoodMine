@@ -3,7 +3,7 @@ package com.example.hoodmine.commands;
 import com.example.hoodmine.HoodMinePlugin;
 import com.example.hoodmine.config.ConfigManager;
 import com.example.hoodmine.quests.QuestManager;
-import com.example.hoodmine.utils.RegionManager;
+import com.example.hoodmine.utils.RegionManagerMine;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
@@ -19,10 +19,10 @@ import java.util.Map;
 public class CommandHandler {
     private final HoodMinePlugin plugin;
     private final ConfigManager configManager;
-    private final RegionManager regionManager;
+    private final RegionManagerMine regionManager;
     private final QuestManager questManager;
 
-    public CommandHandler(HoodMinePlugin plugin, ConfigManager configManager, RegionManager regionManager, QuestManager questManager) {
+    public CommandHandler(HoodMinePlugin plugin, ConfigManager configManager, RegionManagerMine regionManager, QuestManager questManager) {
         this.plugin = plugin;
         this.configManager = configManager;
         this.regionManager = regionManager;

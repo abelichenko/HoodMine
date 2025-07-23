@@ -6,13 +6,13 @@ import com.example.hoodmine.database.DatabaseManager;
 import com.example.hoodmine.quests.QuestManager;
 import com.example.hoodmine.utils.HologramManager;
 import com.example.hoodmine.utils.PlaceholderHook;
-import com.example.hoodmine.utils.RegionManager;
+import com.example.hoodmine.utils.RegionManagerMine;
 import org.bukkit.plugin.java.JavaPlugin;
 
 // Основной класс плагина
 public class HoodMinePlugin extends JavaPlugin {
     private ConfigManager configManager;
-    private RegionManager regionManager;
+    private RegionManagerMine regionManager;
     private DatabaseManager databaseManager;
     private QuestManager questManager;
     private HologramManager hologramManager;
@@ -22,7 +22,7 @@ public class HoodMinePlugin extends JavaPlugin {
         saveDefaultConfig();
         configManager = new ConfigManager(this);
         databaseManager = new DatabaseManager(this);
-        regionManager = new RegionManager(this, configManager, databaseManager);
+        regionManager = new RegionManagerMine(this, configManager, databaseManager);
         questManager = new QuestManager(this, configManager, databaseManager, regionManager);
         hologramManager = new HologramManager(this, configManager, regionManager);
         getCommand("hoodmine").setExecutor(new HoodMineCommand(this, configManager, regionManager, questManager));
@@ -40,7 +40,7 @@ public class HoodMinePlugin extends JavaPlugin {
         return configManager;
     }
 
-    public RegionManager getRegionManager() {
+    public RegionManagerMine getRegionManager() {
         return regionManager;
     }
 

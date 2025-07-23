@@ -20,10 +20,10 @@ import java.util.List;
 public class HologramManager {
     private final HoodMinePlugin plugin;
     private final ConfigManager configManager;
-    private final RegionManager regionManager;
+    private final RegionManagerMine regionManager;
     private final List<Hologram> holograms;
 
-    public HologramManager(HoodMinePlugin plugin, ConfigManager configManager, RegionManager regionManager) {
+    public HologramManager(HoodMinePlugin plugin, ConfigManager configManager, RegionManagerMine regionManager) {
         this.plugin = plugin;
         this.configManager = configManager;
         this.regionManager = regionManager;
@@ -46,7 +46,7 @@ public class HologramManager {
     }
 
     // Сохранение голограмм в instances.yml
-    private void saveHolograms() {
+    public void saveHolograms() {
         File file = new File(plugin.getDataFolder(), "instances.yml");
         FileConfiguration config = YamlConfiguration.loadConfiguration(file);
         config.set("holograms", null);
@@ -60,6 +60,20 @@ public class HologramManager {
         } catch (IOException e) {
             plugin.getLogger().severe("Ошибка сохранения голограмм: " + e.getMessage());
         }
+    }
+
+    // Создание новой голограммы
+    public void createHologram(Location location, List<String> lines) {
+        holograms.add(new Hologram(location, lines));
+        saveHolograms();
+        updateHolograms();
+    }
+
+    // Удаление голограммы
+    public void removeHologram(Location location) {
+        holograms.removeIf(hologram -> hologram.location.distanceSquared(location) < 1);
+        saveHolograms();
+        updateHolograms();
     }
 
     // Обновление голограмм
@@ -86,14 +100,16 @@ public class HologramManager {
     private static class Hologram {
         private final Location location;
         private final List<String> lines;
+        private Object hologramInstance; // Заглушка для API голограмм (например, HolographicDisplays)
 
         public Hologram(Location location, List<String> lines) {
             this.location = location;
-            this.lines = lines;
+            this.lines = new ArrayList<>(lines);
+            // Инициализация голограммы (зависит от API)
         }
 
         public void update(String mineName, String phaseName, String timeToNext) {
-            // Пример обновления голограммы (зависит от используемого плагина, например, HolographicDisplays)
+            // Обновление голограммы с использованием плейсхолдеров
             List<String> updatedLines = new ArrayList<>();
             for (String line : lines) {
                 updatedLines.add(LegacyComponentSerializer.legacySection().serialize(
@@ -105,7 +121,8 @@ public class HologramManager {
                         )
                 ));
             }
-            // Здесь должен быть код для обновления голограммы в зависимости от используемого API
+            // Здесь должен быть код для обновления голограммы через API (например, HolographicDisplays)
+            // Пример: hologramInstance.clearLines(); updatedLines.forEach(hologramInstance::appendTextLine);
         }
     }
 }

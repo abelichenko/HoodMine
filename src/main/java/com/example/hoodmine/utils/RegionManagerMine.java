@@ -5,19 +5,23 @@ import com.example.hoodmine.config.ConfigManager;
 import com.example.hoodmine.database.DatabaseManager;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.math.BlockVector3;
-import com.sk89q.worldedit.regions.Region;
 import com.sk89q.worldguard.WorldGuard;
-import com.sk89q.worldguard.protection.managers.RegionManager;
 import com.sk89q.worldguard.protection.regions.ProtectedRegion;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
+import java.util.Map;
 import java.util.Random;
 
 // Класс для управления регионом шахты и фазами
-public class RegionManager {
+public class RegionManagerMine {
     private final HoodMinePlugin plugin;
     private final ConfigManager configManager;
     private final DatabaseManager databaseManager;
@@ -26,7 +30,7 @@ public class RegionManager {
     private long timeToNextPhase;
     private final Random random = new Random();
 
-    public RegionManager(HoodMinePlugin plugin, ConfigManager configManager, DatabaseManager databaseManager) {
+    public RegionManagerMine(HoodMinePlugin plugin, ConfigManager configManager, DatabaseManager databaseManager) {
         this.plugin = plugin;
         this.configManager = configManager;
         this.databaseManager = databaseManager;
@@ -41,7 +45,7 @@ public class RegionManager {
         if (regionId != null) {
             World world = plugin.getServer().getWorld(config.getString("world"));
             if (world != null) {
-                RegionManager regionManager = WorldGuard.getInstance().getPlatform().getRegionContainer().get(BukkitAdapter.adapt(world));
+                RegionManagerMine regionManager = WorldGuard.getInstance().getPlatform().getRegionContainer().get(BukkitAdapter.adapt(world));
                 if (regionManager != null) {
                     mineRegion = regionManager.getRegion(regionId);
                 }
@@ -57,13 +61,33 @@ public class RegionManager {
         try {
             selection = WorldEditPlugin.getInstance().getSession(player).getSelection(BukkitAdapter.adapt(player.getWorld()));
         } catch (Exception e) {
-            player.sendMessage("Ошибка: выберите регион с помощью WorldEdit!");
+            String mineName = configManager.getMineName();
+            String phaseName = currentPhase != null ? currentPhase.getDisplayName() : "Не установлена";
+            String timeToNext = String.valueOf(timeToNextPhase);
+            player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                    MiniMessage.miniMessage().deserialize(
+                            configManager.getRawMessage("region_select_error"),
+                            Placeholder.unparsed("mine_name", mineName),
+                            Placeholder.unparsed("mine_phase", phaseName),
+                            Placeholder.unparsed("time_to_next", timeToNext)
+                    )
+            ));
             return false;
         }
         World world = player.getWorld();
-        RegionManager regionManager = WorldGuard.getInstance().getPlatform().getRegionContainer().get(BukkitAdapter.adapt(world));
+        RegionManagerMine regionManager = WorldGuard.getInstance().getPlatform().getRegionContainer().get(BukkitAdapter.adapt(world));
         if (regionManager == null) {
-            player.sendMessage("Ошибка: WorldGuard не инициализирован!");
+            String mineName = configManager.getMineName();
+            String phaseName = currentPhase != null ? currentPhase.getDisplayName() : "Не установлена";
+            String timeToNext = String.valueOf(timeToNextPhase);
+            player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                    MiniMessage.miniMessage().deserialize(
+                            configManager.getRawMessage("worldguard_error"),
+                            Placeholder.unparsed("mine_name", mineName),
+                            Placeholder.unparsed("mine_phase", phaseName),
+                            Placeholder.unparsed("time_to_next", timeToNext)
+                    )
+            ));
             return false;
         }
         String regionId = "hoodmine_" + System.currentTimeMillis();
@@ -78,7 +102,17 @@ public class RegionManager {
         config.set("mine_region", regionId);
         config.set("world", world.getName());
         plugin.saveConfig();
-        player.sendMessage("Регион шахты успешно установлен!");
+        String mineName = configManager.getMineName();
+        String phaseName = currentPhase != null ? currentPhase.getDisplayName() : "Не установлена";
+        String timeToNext = String.valueOf(timeToNextPhase);
+        player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                MiniMessage.miniMessage().deserialize(
+                        configManager.getRawMessage("region_set_success"),
+                        Placeholder.unparsed("mine_name", mineName),
+                        Placeholder.unparsed("mine_phase", phaseName),
+                        Placeholder.unparsed("time_to_next", timeToNext)
+                )
+        ));
         resetMine();
         return true;
     }
@@ -141,7 +175,17 @@ public class RegionManager {
         int currentIndex = phases.indexOf(currentPhase);
         currentPhase = phases.get((currentIndex + 1) % phases.size());
         resetMine();
-        plugin.getServer().broadcastMessage("Фаза шахты изменена на: " + currentPhase.getDisplayName());
+        String mineName = configManager.getMineName();
+        String phaseName = currentPhase != null ? currentPhase.getDisplayName() : "Не установлена";
+        String timeToNext = String.valueOf(timeToNextPhase);
+        plugin.getServer().broadcastMessage(LegacyComponentSerializer.legacySection().serialize(
+                MiniMessage.miniMessage().deserialize(
+                        configManager.getRawMessage("phase_changed"),
+                        Placeholder.unparsed("mine_name", mineName),
+                        Placeholder.unparsed("mine_phase", phaseName),
+                        Placeholder.unparsed("time_to_next", timeToNext)
+                )
+        ));
     }
 
     // Проверка, находится ли локация в регионе шахты

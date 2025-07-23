@@ -3,7 +3,7 @@ package com.example.hoodmine.quests;
 import com.example.hoodmine.HoodMinePlugin;
 import com.example.hoodmine.config.ConfigManager;
 import com.example.hoodmine.database.DatabaseManager;
-import com.example.hoodmine.utils.RegionManager;
+import com.example.hoodmine.utils.RegionManagerMine;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
@@ -31,12 +31,12 @@ public class QuestManager implements Listener {
     private final HoodMinePlugin plugin;
     private final ConfigManager configManager;
     private final DatabaseManager databaseManager;
-    private final RegionManager regionManager;
+    private final RegionManagerMine regionManager;
     private final Map<UUID, Map<String, Integer>> playerProgress;
     private final Map<UUID, Integer> playerPages;
     private final Pattern hexPattern = Pattern.compile("^#([A-Fa-f0-9]{6})(.*)$");
 
-    public QuestManager(HoodMinePlugin plugin, ConfigManager configManager, DatabaseManager databaseManager, RegionManager regionManager) {
+    public QuestManager(HoodMinePlugin plugin, ConfigManager configManager, DatabaseManager databaseManager, RegionManagerMine regionManager) {
         this.plugin = plugin;
         this.configManager = configManager;
         this.databaseManager = databaseManager;
