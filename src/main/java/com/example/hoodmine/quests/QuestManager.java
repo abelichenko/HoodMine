@@ -4,7 +4,6 @@ import com.example.hoodmine.HoodMinePlugin;
 import com.example.hoodmine.config.ConfigManager;
 import com.example.hoodmine.database.DatabaseManager;
 import com.example.hoodmine.utils.RegionManager;
-import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
@@ -31,7 +30,8 @@ public class QuestManager implements Listener {
     private final ConfigManager configManager;
     private final DatabaseManager databaseManager;
     private final RegionManager regionManager;
-    private final Map<UUID, Map<String, Integer>> playerProgress; // Прогресс игроков по квестам
+    private final Map<UUID, Map<String, Integer>> playerProgress;
+    private final Map<UUID, Integer> playerPages;
 
     public QuestManager(HoodMinePlugin plugin, ConfigManager configManager, DatabaseManager databaseManager, RegionManager regionManager) {
         this.plugin = plugin;
@@ -39,34 +39,69 @@ public class QuestManager implements Listener {
         this.databaseManager = databaseManager;
         this.regionManager = regionManager;
         this.playerProgress = new HashMap<>();
+        this.playerPages = new HashMap<>();
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
 
     // Открытие GUI квестов
-    public void openQuestsGUI(Player player) {
-        Inventory inventory = plugin.getServer().createInventory(null, 27, "Quests");
-        for (ConfigManager.Quest quest : configManager.getQuests()) {
+    public void openQuestsGUI(Player player, int page) {
+        ConfigManager.QuestsGUISettings guiSettings = configManager.getQuestsGUISettings();
+        Inventory inventory = plugin.getServer().createInventory(null, guiSettings.getSize(), "Квесты");
+
+        List<ConfigManager.Quest> quests = configManager.getQuests();
+        int questsPerPage = guiSettings.getQuestsPerPage();
+        int startIndex = page * questsPerPage;
+        int endIndex = Math.min(startIndex + questsPerPage, quests.size());
+        List<Integer> questSlots = guiSettings.getQuestSlots();
+
+        // Заполнение слотов квестами
+        for (int i = startIndex; i < endIndex && i < quests.size(); i++) {
+            ConfigManager.Quest quest = quests.get(i);
+            int slot = questSlots.get(i - startIndex);
             ItemStack item = new ItemStack(Material.valueOf(quest.getTargetBlock()));
             ItemMeta meta = item.getItemMeta();
-            // Преобразуем HEX-цвета в Legacy-формат для корректного отображения
             meta.setDisplayName(LegacyComponentSerializer.legacySection().serialize(
                     MiniMessage.miniMessage().deserialize(quest.getTitle())
             ));
             List<String> lore = new ArrayList<>();
             lore.add(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize("Required: " + quest.getAmount() + " " + quest.getTargetBlock())
+                    MiniMessage.miniMessage().deserialize("Требуется: " + quest.getAmount() + " " + quest.getDisplayName())
             ));
             lore.add(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize("Reward: Execute commands")
+                    MiniMessage.miniMessage().deserialize("Награда: Выполнить команды")
             ));
             int progress = getPlayerProgress(player.getUniqueId(), quest.getId());
             lore.add(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize("Progress: " + progress + "/" + quest.getAmount())
+                    MiniMessage.miniMessage().deserialize("Прогресс: " + progress + "/" + quest.getAmount())
             ));
             meta.setLore(lore);
             item.setItemMeta(meta);
-            inventory.addItem(item);
+            inventory.setItem(slot, item);
         }
+
+        // Кнопка "Следующая страница"
+        if (endIndex < quests.size() && guiSettings.getNextPageSlot() >= 0) {
+            ItemStack nextPageItem = new ItemStack(Material.valueOf(guiSettings.getNextPageMaterial()));
+            ItemMeta nextMeta = nextPageItem.getItemMeta();
+            nextMeta.setDisplayName(LegacyComponentSerializer.legacySection().serialize(
+                    MiniMessage.miniMessage().deserialize(guiSettings.getNextPageName())
+            ));
+            nextPageItem.setItemMeta(nextMeta);
+            inventory.setItem(guiSettings.getNextPageSlot(), nextPageItem);
+        }
+
+        // Кнопка "Предыдущая страница"
+        if (page > 0 && guiSettings.getPrevPageSlot() >= 0) {
+            ItemStack prevPageItem = new ItemStack(Material.valueOf(guiSettings.getPrevPageMaterial()));
+            ItemMeta prevMeta = prevPageItem.getItemMeta();
+            prevMeta.setDisplayName(LegacyComponentSerializer.legacySection().serialize(
+                    MiniMessage.miniMessage().deserialize(guiSettings.getPrevPageName())
+            ));
+            prevPageItem.setItemMeta(prevMeta);
+            inventory.setItem(guiSettings.getPrevPageSlot(), prevPageItem);
+        }
+
+        playerPages.put(player.getUniqueId(), page);
         player.openInventory(inventory);
     }
 
@@ -102,8 +137,17 @@ public class QuestManager implements Listener {
     // Обработка кликов по инвентарю
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
-        if (event.getView().getTitle().equals("Quests")) {
-            event.setCancelled(true); // Блокируем взаимодействие с предметами
+        if (!event.getView().getTitle().equals("Квесты")) return;
+        event.setCancelled(true); // Блокируем взаимодействие
+        if (!(event.getWhoClicked() instanceof Player player)) return;
+        int slot = event.getRawSlot();
+        ConfigManager.QuestsGUISettings guiSettings = configManager.getQuestsGUISettings();
+        int currentPage = playerPages.getOrDefault(player.getUniqueId(), 0);
+
+        if (slot == guiSettings.getNextPageSlot() && (currentPage + 1) * guiSettings.getQuestsPerPage() < configManager.getQuests().size()) {
+            openQuestsGUI(player, currentPage + 1);
+        } else if (slot == guiSettings.getPrevPageSlot() && currentPage > 0) {
+            openQuestsGUI(player, currentPage - 1);
         }
     }
 

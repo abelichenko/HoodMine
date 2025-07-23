@@ -15,25 +15,30 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Map;
 import java.util.Random;
 
 // Класс для управления регионом шахты
 public class RegionManager {
-    private final HoodMinePlugin plugin; // Ссылка на плагин
-    private final ConfigManager configManager; // Менеджер конфигурации
-    private CuboidRegion mineRegion; // Регион шахты
-    private int currentPhaseIndex; // Индекс текущей фазы
-    private final Random random; // Генератор случайных чисел
+    private final HoodMinePlugin plugin;
+    private final ConfigManager configManager;
+    private CuboidRegion mineRegion;
+    private int currentPhaseIndex;
+    private final Random random;
 
     public RegionManager(HoodMinePlugin plugin, ConfigManager configManager) {
         this.plugin = plugin;
         this.configManager = configManager;
         this.currentPhaseIndex = 0;
         this.random = new Random();
+        loadRegion(); // Загрузка региона при инициализации
     }
 
     // Установка региона шахты
@@ -56,6 +61,7 @@ public class RegionManager {
             }
 
             mineRegion = (CuboidRegion) region;
+            saveRegion(); // Сохраняем регион
             player.sendMessage(configManager.getMessage("setregion_ok"));
             resetMine(); // Сброс региона после установки
             return true;
@@ -73,30 +79,77 @@ public class RegionManager {
         }
     }
 
+    // Сохранение региона в instances.yml
+    private void saveRegion() {
+        if (mineRegion == null) return;
+        File file = new File(plugin.getDataFolder(), "instances.yml");
+        FileConfiguration config = YamlConfiguration.loadConfiguration(file);
+        BlockVector3 min = mineRegion.getMinimumPoint();
+        BlockVector3 max = mineRegion.getMaximumPoint();
+        config.set("mine_region.world", mineRegion.getWorld().getName());
+        config.set("mine_region.min.x", min.getX());
+        config.set("mine_region.min.y", min.getY());
+        config.set("mine_region.min.z", min.getZ());
+        config.set("mine_region.max.x", max.getX());
+        config.set("mine_region.max.y", max.getY());
+        config.set("mine_region.max.z", max.getZ());
+        try {
+            config.save(file);
+        } catch (IOException e) {
+            plugin.getLogger().severe("Ошибка сохранения региона: " + e.getMessage());
+        }
+    }
+
+    // Загрузка региона из instances.yml
+    private void loadRegion() {
+        File file = new File(plugin.getDataFolder(), "instances.yml");
+        if (!file.exists()) return;
+        FileConfiguration config = YamlConfiguration.loadConfiguration(file);
+        String worldName = config.getString("mine_region.world");
+        if (worldName == null) return;
+        World world = Bukkit.getWorld(worldName);
+        if (world == null) {
+            plugin.getLogger().warning("Мир " + worldName + " не найден для региона шахты.");
+            return;
+        }
+        int minX = config.getInt("mine_region.min.x");
+        int minY = config.getInt("mine_region.min.y");
+        int minZ = config.getInt("mine_region.min.z");
+        int maxX = config.getInt("mine_region.max.x");
+        int maxY = config.getInt("mine_region.max.y");
+        int maxZ = config.getInt("mine_region.max.z");
+        mineRegion = new CuboidRegion(
+                BukkitAdapter.adapt(world),
+                BlockVector3.at(minX, minY, minZ),
+                BlockVector3.at(maxX, maxY, maxZ)
+        );
+    }
+
     // Сброс шахты
     public void resetMine() {
         if (mineRegion == null || configManager.getPhases().isEmpty()) {
-            plugin.getLogger().warning("Cannot reset mine: Region or phases not defined.");
+            plugin.getLogger().warning("Невозможно сбросить шахту: регион или фазы не определены.");
             return;
         }
 
         ConfigManager.Phase currentPhase = configManager.getPhases().get(currentPhaseIndex);
         Map<String, Double> spawns = currentPhase.getSpawns();
         if (spawns.isEmpty()) {
-            plugin.getLogger().warning("No spawns defined for phase: " + currentPhase.getId());
+            plugin.getLogger().warning("Для фазы нет спавнов: " + currentPhase.getId());
             return;
         }
 
         World world = Bukkit.getWorld(mineRegion.getWorld().getName());
         if (world == null) {
-            plugin.getLogger().severe("World not found for mine region.");
+            plugin.getLogger().severe("Мир не найден для региона шахты.");
             return;
         }
 
-        // Заполнение региона блоками на основе вероятностей
+        // Заполнение региона блоками
         for (BlockVector3 pos : mineRegion) {
             double rand = random.nextDouble();
             double cumulative = 0.0;
+            boolean set = false;
             for (Map.Entry<String, Double> entry : spawns.entrySet()) {
                 cumulative += entry.getValue();
                 if (rand <= cumulative) {
@@ -105,10 +158,15 @@ public class RegionManager {
                         Material material = Material.getMaterial(entry.getKey().toUpperCase());
                         if (material != null) {
                             world.getBlockAt(pos.getX(), pos.getY(), pos.getZ()).setType(material);
+                            set = true;
                         }
                     }
                     break;
                 }
+            }
+            // Если блок не установлен, ставим STONE
+            if (!set) {
+                world.getBlockAt(pos.getX(), pos.getY(), pos.getZ()).setType(Material.STONE);
             }
         }
 
@@ -118,7 +176,7 @@ public class RegionManager {
     // Запуск задачи обновления фаз
     public void startPhaseUpdateTask() {
         if (configManager.getPhases().isEmpty()) {
-            plugin.getLogger().warning("Cannot start phase update task: No phases defined.");
+            plugin.getLogger().warning("Невозможно запустить задачу обновления фаз: фазы не определены.");
             return;
         }
 
@@ -133,7 +191,7 @@ public class RegionManager {
     // Получение текущей фазы
     public ConfigManager.Phase getCurrentPhase() {
         if (configManager.getPhases().isEmpty()) {
-            plugin.getLogger().warning("No phases available, returning null.");
+            plugin.getLogger().warning("Фазы отсутствуют, возвращается null.");
             return null;
         }
         return configManager.getPhases().get(currentPhaseIndex);

@@ -6,14 +6,14 @@ reward_multiplier:
   max: 2.0
 phases:
   common:
-    display_name: "#AAAAAA[Common Phase]"
+    display_name: "#AAAAAA[Обычная фаза]"
     duration: 1800
     spawns:
       COAL_ORE: 0.30
       IRON_ORE: 0.15
       GOLD_ORE: 0.05
   rare:
-    display_name: "#55FFFF[Rare Phase]"
+    display_name: "#55FFFF[Редкая фаза]"
     duration: 1200
     spawns:
       COAL_ORE: 0.10
@@ -21,7 +21,7 @@ phases:
       GOLD_ORE: 0.10
       DIAMOND_ORE: 0.02
   epic:
-    display_name: "#AA00AA[Epic Phase]"
+    display_name: "#AA00AA[Эпическая фаза]"
     duration: 600
     spawns:
       IRON_ORE: 0.10
@@ -30,8 +30,9 @@ phases:
       EMERALD_ORE: 0.01
 quests:
   quest1:
-    title: "#FFFF55Break 1000 Diamond Ore"
+    title: "#FFFF55Добудьте 1000 алмазной руды"
     target_block: "DIAMOND_ORE"
+    display_name: "Алмазная руда"
     amount: 1000
     reward:
       - "eco give %play% 10101010"
@@ -39,3 +40,13 @@ sell_prices:
   DIAMOND_ORE: 50
   IRON_ORE: 10
   GOLD_ORE: 30
+quests_gui:
+  size: 27
+  quest_slots: [10, 11, 12, 13, 14, 15, 16, 19, 20]
+  quests_per_page: 9
+  next_page_slot: 26
+  prev_page_slot: 18
+  next_page_material: "ARROW"
+  prev_page_material: "ARROW"
+  next_page_name: "<green>Следующая страница"
+  prev_page_name: "<green>Предыдущая страница"

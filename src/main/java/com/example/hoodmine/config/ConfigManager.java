@@ -1,242 +1,175 @@
 package com.example.hoodmine.config;
 
 import com.example.hoodmine.HoodMinePlugin;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
-// Класс для управления конфигурацией плагина
+// Класс для управления конфигурацией
 public class ConfigManager {
-    private final HoodMinePlugin plugin; // Ссылка на плагин
-    private FileConfiguration config; // Конфигурация config.yml
-    private FileConfiguration messages; // Конфигурация messages.yml
-    private final File configFile; // Файл config.yml
-    private final File messagesFile; // Файл messages.yml
-    private final List<Phase> phases; // Список фаз шахты
-    private final List<Quest> quests; // Список квестов
-    private String mineName; // Название шахты
-    private int timerInterval; // Интервал таймера (в секундах)
-    private final Map<String, Double> sellPrices; // Цены продажи руд
-    private final RewardMultiplier rewardMultiplier; // Множитель наград
+    private final HoodMinePlugin plugin;
+    private FileConfiguration config;
+    private FileConfiguration messages;
+    private List<Phase> phases;
+    private List<Quest> quests;
+    private Map<String, Double> sellPrices;
+    private RewardMultiplier rewardMultiplier;
+    private QuestsGUISettings questsGUISettings;
 
     public ConfigManager(HoodMinePlugin plugin) {
         this.plugin = plugin;
-        this.configFile = new File(plugin.getDataFolder(), "config.yml");
-        this.messagesFile = new File(plugin.getDataFolder(), "messages.yml");
-        this.phases = new ArrayList<>();
-        this.quests = new ArrayList<>();
-        this.sellPrices = new HashMap<>();
-        this.mineName = "HoodMine";
-        this.timerInterval = 600;
-        this.rewardMultiplier = new RewardMultiplier(1.0, 0.1, 2.0);
-
-        // Загрузка конфигураций
         loadConfig();
         loadMessages();
+    }
+
+    // Загрузка конфигурации
+    private void loadConfig() {
+        plugin.saveDefaultConfig();
+        config = plugin.getConfig();
         loadPhases();
         loadQuests();
         loadSellPrices();
-    }
-
-    // Загрузка config.yml
-    private void loadConfig() {
-        if (!configFile.exists()) {
-            plugin.saveResource("config.yml", false);
-        }
-        config = YamlConfiguration.loadConfiguration(configFile);
-        mineName = config.getString("mine_name", "HoodMine");
-        timerInterval = config.getInt("timer_interval", 600);
-
-        // Загрузка множителя наград
-        ConfigurationSection multiplierSection = config.getConfigurationSection("reward_multiplier");
-        if (multiplierSection != null) {
-            double base = multiplierSection.getDouble("base", 1.0);
-            double perQuest = multiplierSection.getDouble("per_quest", 0.1);
-            double max = multiplierSection.getDouble("max", 2.0);
-            this.rewardMultiplier.setBase(base);
-            this.rewardMultiplier.setPerQuest(perQuest);
-            this.rewardMultiplier.setMax(max);
-        }
-
-        // Проверяем и создаём секции, если они отсутствуют
-        if (!config.isConfigurationSection("phases")) {
-            createDefaultPhases();
-        }
-        if (!config.isConfigurationSection("quests")) {
-            createDefaultQuests();
-        }
-        if (!config.isConfigurationSection("sell_prices")) {
-            createDefaultSellPrices();
-        }
-        saveConfig();
+        loadRewardMultiplier();
+        loadQuestsGUISettings();
     }
 
     // Загрузка messages.yml
     private void loadMessages() {
+        File messagesFile = new File(plugin.getDataFolder(), "messages.yml");
         if (!messagesFile.exists()) {
             plugin.saveResource("messages.yml", false);
         }
         messages = YamlConfiguration.loadConfiguration(messagesFile);
     }
 
-    // Загрузка фаз шахты
-    private void loadPhases() {
-        phases.clear();
-        ConfigurationSection phasesSection = config.getConfigurationSection("phases");
-        if (phasesSection == null) {
-            plugin.getLogger().warning("No phases found in config.yml! Using default phases.");
-            createDefaultPhases();
-            phasesSection = config.getConfigurationSection("phases");
-        }
+    // Получение сообщения
+    public String getMessage(String key) {
+        return messages.getString(key, "<red>Сообщение не найдено: " + key);
+    }
 
-        for (String key : phasesSection.getKeys(false)) {
-            ConfigurationSection phaseSection = phasesSection.getConfigurationSection(key);
-            if (phaseSection != null) {
-                String displayName = phaseSection.getString("display_name", "Фаза " + key);
-                int duration = phaseSection.getInt("duration", 3600);
-                ConfigurationSection spawnsSection = phaseSection.getConfigurationSection("spawns");
-                Map<String, Double> spawns = new HashMap<>();
-                if (spawnsSection != null) {
-                    for (String material : spawnsSection.getKeys(false)) {
-                        spawns.put(material, spawnsSection.getDouble(material, 0.0));
+    // Получение сырого сообщения
+    public String getRawMessage(String key) {
+        return messages.getString(key, "<red>Сообщение не найдено: " + key);
+    }
+
+    // Установка имени шахты
+    public void setMineName(String name) {
+        config.set("mine_name", name);
+        plugin.saveConfig();
+    }
+
+    // Получение имени шахты
+    public String getMineName() {
+        return config.getString("mine_name", "HoodMine");
+    }
+
+    // Получение интервала таймера
+    public long getTimerInterval() {
+        return config.getLong("timer_interval", 600);
+    }
+
+    // Загрузка фаз
+    private void loadPhases() {
+        phases = new ArrayList<>();
+        ConfigurationSection phasesSection = config.getConfigurationSection("phases");
+        if (phasesSection != null) {
+            for (String phaseId : phasesSection.getKeys(false)) {
+                ConfigurationSection phaseSection = phasesSection.getConfigurationSection(phaseId);
+                if (phaseSection != null) {
+                    String displayName = phaseSection.getString("display_name", phaseId);
+                    long duration = phaseSection.getLong("duration", 600);
+                    Map<String, Double> spawns = new HashMap<>();
+                    ConfigurationSection spawnsSection = phaseSection.getConfigurationSection("spawns");
+                    if (spawnsSection != null) {
+                        for (String material : spawnsSection.getKeys(false)) {
+                            spawns.put(material, spawnsSection.getDouble(material));
+                        }
                     }
+                    phases.add(new Phase(phaseId, displayName, duration, spawns));
                 }
-                phases.add(new Phase(key, displayName, spawns, duration));
             }
         }
     }
 
     // Загрузка квестов
     private void loadQuests() {
-        quests.clear();
+        quests = new ArrayList<>();
         ConfigurationSection questsSection = config.getConfigurationSection("quests");
-        if (questsSection == null) {
-            plugin.getLogger().warning("No quests found in config.yml! Using default quests.");
-            createDefaultQuests();
-            questsSection = config.getConfigurationSection("quests");
-        }
-
-        for (String key : questsSection.getKeys(false)) {
-            ConfigurationSection questSection = questsSection.getConfigurationSection(key);
-            if (questSection != null) {
-                String title = questSection.getString("title", "Квест " + key);
-                String targetBlock = questSection.getString("target_block", "STONE");
-                int amount = questSection.getInt("amount", 100);
-                List<String> reward = questSection.getStringList("reward");
-                quests.add(new Quest(key, title, targetBlock, amount, reward));
+        if (questsSection != null) {
+            for (String questId : questsSection.getKeys(false)) {
+                ConfigurationSection questSection = questsSection.getConfigurationSection(questId);
+                if (questSection != null) {
+                    String title = questSection.getString("title", questId);
+                    String targetBlock = questSection.getString("target_block", "STONE");
+                    String displayName = questSection.getString("display_name", targetBlock);
+                    int amount = questSection.getInt("amount", 1);
+                    List<String> reward = questSection.getStringList("reward");
+                    quests.add(new Quest(questId, title, targetBlock, displayName, amount, reward));
+                }
             }
         }
     }
 
     // Загрузка цен продажи
     private void loadSellPrices() {
-        sellPrices.clear();
+        sellPrices = new HashMap<>();
         ConfigurationSection pricesSection = config.getConfigurationSection("sell_prices");
-        if (pricesSection == null) {
-            plugin.getLogger().warning("No sell prices found in config.yml! Using default prices.");
-            createDefaultSellPrices();
-            pricesSection = config.getConfigurationSection("sell_prices");
-        }
-
-        for (String material : pricesSection.getKeys(false)) {
-            sellPrices.put(material, pricesSection.getDouble(material, 0.0));
+        if (pricesSection != null) {
+            for (String material : pricesSection.getKeys(false)) {
+                sellPrices.put(material, pricesSection.getDouble(material));
+            }
         }
     }
 
-    // Создание стандартных фаз
-    private void createDefaultPhases() {
-        ConfigurationSection phasesSection = config.createSection("phases");
-        ConfigurationSection common = phasesSection.createSection("common");
-        common.set("display_name", "#AAAAAA[Обычная Фаза]");
-        common.set("duration", 1800);
-        ConfigurationSection commonSpawns = common.createSection("spawns");
-        commonSpawns.set("COAL_ORE", 0.30);
-        commonSpawns.set("IRON_ORE", 0.15);
-        commonSpawns.set("GOLD_ORE", 0.05);
-
-        ConfigurationSection rare = phasesSection.createSection("rare");
-        rare.set("display_name", "#55FFFF[Редкая Фаза]");
-        rare.set("duration", 1200);
-        ConfigurationSection rareSpawns = rare.createSection("spawns");
-        rareSpawns.set("COAL_ORE", 0.10);
-        rareSpawns.set("IRON_ORE", 0.20);
-        rareSpawns.set("GOLD_ORE", 0.10);
-        rareSpawns.set("DIAMOND_ORE", 0.02);
-
-        ConfigurationSection epic = phasesSection.createSection("epic");
-        epic.set("display_name", "#AA00AA[Эпическая Фаза]");
-        epic.set("duration", 600);
-        ConfigurationSection epicSpawns = epic.createSection("spawns");
-        epicSpawns.set("IRON_ORE", 0.10);
-        epicSpawns.set("GOLD_ORE", 0.10);
-        epicSpawns.set("DIAMOND_ORE", 0.05);
-        epicSpawns.set("EMERALD_ORE", 0.01);
-
-        saveConfig();
-    }
-
-    // Создание стандартных квестов
-    private void createDefaultQuests() {
-        ConfigurationSection questsSection = config.createSection("quests");
-        ConfigurationSection quest1 = questsSection.createSection("quest1");
-        quest1.set("title", "#FFFF55Сломать 1000 алмазной руды");
-        quest1.set("target_block", "DIAMOND_ORE");
-        quest1.set("amount", 1000);
-        quest1.set("reward", Arrays.asList("eco give %play% 10101010"));
-        saveConfig();
-    }
-
-    // Создание стандартных цен продажи
-    private void createDefaultSellPrices() {
-        ConfigurationSection pricesSection = config.createSection("sell_prices");
-        pricesSection.set("DIAMOND_ORE", 50);
-        pricesSection.set("IRON_ORE", 10);
-        pricesSection.set("GOLD_ORE", 30);
-        saveConfig();
-    }
-
-    // Сохранение config.yml
-    public void saveConfig() {
-        try {
-            config.save(configFile);
-        } catch (Exception e) {
-            plugin.getLogger().severe("Ошибка при сохранении config.yml: " + e.getMessage());
+    // Загрузка множителя наград
+    private void loadRewardMultiplier() {
+        ConfigurationSection multiplierSection = config.getConfigurationSection("reward_multiplier");
+        if (multiplierSection != null) {
+            double base = multiplierSection.getDouble("base", 1.0);
+            double perQuest = multiplierSection.getDouble("per_quest", 0.1);
+            double max = multiplierSection.getDouble("max", 2.0);
+            rewardMultiplier = new RewardMultiplier(base, perQuest, max);
+        } else {
+            rewardMultiplier = new RewardMultiplier(1.0, 0.1, 2.0);
         }
     }
 
-    // Получение сообщения с поддержкой HEX-цветов
-    public Component getMessage(String key) {
-        String message = messages.getString(key, "Сообщение не найдено: " + key);
-        return MiniMessage.miniMessage().deserialize(message);
+    // Загрузка настроек GUI квестов
+    private void loadQuestsGUISettings() {
+        ConfigurationSection guiSection = config.getConfigurationSection("quests_gui");
+        if (guiSection != null) {
+            int size = guiSection.getInt("size", 27);
+            List<Integer> questSlots = guiSection.getIntegerList("quest_slots");
+            int questsPerPage = guiSection.getInt("quests_per_page", 9);
+            int nextPageSlot = guiSection.getInt("next_page_slot", -1);
+            int prevPageSlot = guiSection.getInt("prev_page_slot", -1);
+            String nextPageMaterial = guiSection.getString("next_page_material", "ARROW");
+            String prevPageMaterial = guiSection.getString("prev_page_material", "ARROW");
+            String nextPageName = guiSection.getString("next_page_name", "<green>Next Page");
+            String prevPageName = guiSection.getString("prev_page_name", "<green>Previous Page");
+            questsGUISettings = new QuestsGUISettings(size, questSlots, questsPerPage, nextPageSlot, prevPageSlot,
+                    nextPageMaterial, prevPageMaterial, nextPageName, prevPageName);
+        } else {
+            questsGUISettings = new QuestsGUISettings(27, List.of(10, 11, 12, 13, 14, 15, 16, 19, 20), 9, 26, 18,
+                    "ARROW", "ARROW", "<green>Next Page", "<green>Previous Page");
+        }
     }
 
-    // Получение сырого текста сообщения для внешней обработки
-    public String getRawMessage(String key) {
-        return messages.getString(key, "Сообщение не найдено: " + key);
-    }
-
-    // Получение списка фаз
+    // Получение фаз
     public List<Phase> getPhases() {
         return phases;
     }
 
-    // Получение списка квестов
+    // Получение квестов
     public List<Quest> getQuests() {
         return quests;
-    }
-
-    // Получение интервала таймера
-    public int getTimerInterval() {
-        return timerInterval;
     }
 
     // Получение цен продажи
@@ -249,30 +182,23 @@ public class ConfigManager {
         return rewardMultiplier;
     }
 
-    // Установка названия шахты
-    public void setMineName(String name) {
-        this.mineName = name;
-        config.set("mine_name", name);
-        saveConfig();
+    // Получение настроек GUI квестов
+    public QuestsGUISettings getQuestsGUISettings() {
+        return questsGUISettings;
     }
 
-    // Получение названия шахты
-    public String getMineName() {
-        return mineName;
-    }
-
-    // Внутренний класс для представления фазы шахты
+    // Класс для хранения данных о фазе
     public static class Phase {
         private final String id;
         private final String displayName;
+        private final long duration;
         private final Map<String, Double> spawns;
-        private final int duration;
 
-        public Phase(String id, String displayName, Map<String, Double> spawns, int duration) {
+        public Phase(String id, String displayName, long duration, Map<String, Double> spawns) {
             this.id = id;
             this.displayName = displayName;
-            this.spawns = spawns;
             this.duration = duration;
+            this.spawns = spawns;
         }
 
         public String getId() {
@@ -283,27 +209,29 @@ public class ConfigManager {
             return displayName;
         }
 
+        public long getDuration() {
+            return duration;
+        }
+
         public Map<String, Double> getSpawns() {
             return spawns;
         }
-
-        public int getDuration() {
-            return duration;
-        }
     }
 
-    // Внутренний класс для представления квеста
+    // Класс для хранения данных о квесте
     public static class Quest {
         private final String id;
         private final String title;
         private final String targetBlock;
+        private final String displayName;
         private final int amount;
         private final List<String> reward;
 
-        public Quest(String id, String title, String targetBlock, int amount, List<String> reward) {
+        public Quest(String id, String title, String targetBlock, String displayName, int amount, List<String> reward) {
             this.id = id;
             this.title = title;
             this.targetBlock = targetBlock;
+            this.displayName = displayName;
             this.amount = amount;
             this.reward = reward;
         }
@@ -320,6 +248,10 @@ public class ConfigManager {
             return targetBlock;
         }
 
+        public String getDisplayName() {
+            return displayName;
+        }
+
         public int getAmount() {
             return amount;
         }
@@ -329,11 +261,11 @@ public class ConfigManager {
         }
     }
 
-    // Внутренний класс для множителя наград
+    // Класс для хранения множителя наград
     public static class RewardMultiplier {
-        private double base;
-        private double perQuest;
-        private double max;
+        private final double base;
+        private final double perQuest;
+        private final double max;
 
         public RewardMultiplier(double base, double perQuest, double max) {
             this.base = base;
@@ -352,17 +284,67 @@ public class ConfigManager {
         public double getMax() {
             return max;
         }
+    }
 
-        public void setBase(double base) {
-            this.base = base;
+    // Класс для хранения настроек GUI квестов
+    public static class QuestsGUISettings {
+        private final int size;
+        private final List<Integer> questSlots;
+        private final int questsPerPage;
+        private final int nextPageSlot;
+        private final int prevPageSlot;
+        private final String nextPageMaterial;
+        private final String prevPageMaterial;
+        private final String nextPageName;
+        private final String prevPageName;
+
+        public QuestsGUISettings(int size, List<Integer> questSlots, int questsPerPage, int nextPageSlot, int prevPageSlot,
+                                 String nextPageMaterial, String prevPageMaterial, String nextPageName, String prevPageName) {
+            this.size = size;
+            this.questSlots = questSlots;
+            this.questsPerPage = questsPerPage;
+            this.nextPageSlot = nextPageSlot;
+            this.prevPageSlot = prevPageSlot;
+            this.nextPageMaterial = nextPageMaterial;
+            this.prevPageMaterial = prevPageMaterial;
+            this.nextPageName = nextPageName;
+            this.prevPageName = prevPageName;
         }
 
-        public void setPerQuest(double perQuest) {
-            this.perQuest = perQuest;
+        public int getSize() {
+            return size;
         }
 
-        public void setMax(double max) {
-            this.max = max;
+        public List<Integer> getQuestSlots() {
+            return questSlots;
+        }
+
+        public int getQuestsPerPage() {
+            return questsPerPage;
+        }
+
+        public int getNextPageSlot() {
+            return nextPageSlot;
+        }
+
+        public int getPrevPageSlot() {
+            return prevPageSlot;
+        }
+
+        public String getNextPageMaterial() {
+            return nextPageMaterial;
+        }
+
+        public String getPrevPageMaterial() {
+            return prevPageMaterial;
+        }
+
+        public String getNextPageName() {
+            return nextPageName;
+        }
+
+        public String getPrevPageName() {
+            return prevPageName;
         }
     }
 }

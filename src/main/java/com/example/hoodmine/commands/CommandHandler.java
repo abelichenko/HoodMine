@@ -44,7 +44,7 @@ public class CommandHandler {
 
     // Обработка команды /hoodmine quests
     public void handleQuests(Player player) {
-        questManager.openQuestsGUI(player);
+        questManager.openQuestsGUI(player, 0);
     }
 
     // Обработка команды /hoodmine sell [material] [amount]
@@ -88,9 +88,15 @@ public class CommandHandler {
         }
 
         if (totalAmount < amount) {
+            // Используем display_name из квестов, если доступно
+            String displayName = configManager.getQuests().stream()
+                    .filter(q -> q.getTargetBlock().equals(materialName))
+                    .findFirst()
+                    .map(ConfigManager.Quest::getDisplayName)
+                    .orElse(materialName);
             player.sendMessage(MiniMessage.miniMessage().deserialize(
                     configManager.getRawMessage("sell_not_enough"),
-                    Placeholder.unparsed("material", materialName)
+                    Placeholder.unparsed("material", displayName)
             ));
             return;
         }
@@ -115,10 +121,16 @@ public class CommandHandler {
         double multiplier = questManager.calculateRewardMultiplier(player);
         double finalPrice = price * multiplier;
         Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "eco give " + player.getName() + " " + finalPrice);
+        // Используем display_name для сообщения
+        String displayName = configManager.getQuests().stream()
+                .filter(q -> q.getTargetBlock().equals(materialName))
+                .findFirst()
+                .map(ConfigManager.Quest::getDisplayName)
+                .orElse(materialName);
         player.sendMessage(MiniMessage.miniMessage().deserialize(
                 configManager.getRawMessage("sell_success"),
                 Placeholder.unparsed("amount", String.valueOf(amount)),
-                Placeholder.unparsed("material", materialName),
+                Placeholder.unparsed("material", displayName),
                 Placeholder.unparsed("money", String.format("%.2f", finalPrice))
         ));
     }
@@ -138,7 +150,7 @@ public class CommandHandler {
     // Обработка команды /hoodmine info
     public void handleInfo(Player player) {
         ConfigManager.Phase currentPhase = regionManager.getCurrentPhase();
-        String phaseName = currentPhase != null ? currentPhase.getDisplayName() : "Not set";
+        String phaseName = currentPhase != null ? currentPhase.getDisplayName() : "Не установлена";
         long timeToNext = regionManager.getTimeToNextPhase();
         player.sendMessage(MiniMessage.miniMessage().deserialize(
                 configManager.getRawMessage("info_message"),
