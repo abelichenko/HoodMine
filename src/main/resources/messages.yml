@@ -22,3 +22,16 @@ region_select_error: "<red>Ошибка: выберите регион с пом
 worldguard_error: "<red>Ошибка: WorldGuard не инициализирован! <mine_name> <mine_phase> <time_to_next>"
 region_set_success: "<green>Регион шахты успешно установлен! <mine_name> <mine_phase> <time_to_next>"
 phase_changed: "<yellow>Фаза шахты изменена на: <mine_phase> (<mine_name>, следующая через <time_to_next> сек)"
+mine_reset: "<green>Шахта <mine_name> сброшена! Текущая фаза: <mine_phase>, следующая через <time_to_next> сек"
+quest_completed: "<green>Квест <quest_name> выполнен! Множитель: <multiplier>x <mine_name> <mine_phase> <time_to_next>"
+seller_title: "<#FFFF55>Скупщик"
+quests_title: "<#FFFF55>Квесты"
+no_items_to_sell: "<red>У вас нет предметов для продажи! <mine_name> <mine_phase> <time_to_next>"
+items_sold: "<green>Продано <amount> <material> за $<money> (множитель: <multiplier>x) <mine_name> <mine_phase> <time_to_next>"
+help: |
+  <#FFFF55>Команды HoodMine:
+  <white>/hoodmine setregion - Установить регион шахты (требуется WorldEdit)
+  <white>/hoodmine reset - Сбросить шахту
+  <white>/hoodmine seller - Открыть меню скупщика
+  <white>/hoodmine quests - Просмотреть квесты
+  <white>Текущая шахта: <mine_name>, фаза: <mine_phase>, до смены: <time_to_next> сек

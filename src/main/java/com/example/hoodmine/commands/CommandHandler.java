@@ -11,12 +11,18 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
-// Класс для обработки подкоманд /hoodmine
-public class CommandHandler {
+// Класс для обработки подкоманд и событий GUI
+public class CommandHandler implements Listener {
     private final HoodMinePlugin plugin;
     private final ConfigManager configManager;
     private final RegionManagerMine regionManager;
@@ -27,111 +33,102 @@ public class CommandHandler {
         this.configManager = configManager;
         this.regionManager = regionManager;
         this.questManager = questManager;
+        plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
 
-    // Обработка команды /hoodmine setregion
     public boolean handleSetRegion(Player player) {
         return regionManager.setRegion(player);
     }
 
-    // Обработка команды /hoodmine setname <name>
-    public void handleSetName(CommandSender sender, String name) {
-        configManager.setMineName(name);
-        sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                MiniMessage.miniMessage().deserialize(
-                        configManager.getRawMessage("setname_ok"),
-                        Placeholder.unparsed("name", name),
-                        Placeholder.unparsed("mine_name", configManager.getMineName()),
-                        Placeholder.unparsed("mine_phase", regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена"),
-                        Placeholder.unparsed("time_to_next", String.valueOf(regionManager.getTimeToNextPhase()))
-                )
-        ));
-    }
-
-    // Обработка команды /hoodmine quests
-    public void handleQuests(Player player) {
-        questManager.openQuestsGUI(player, 0);
-    }
-
-    // Обработка команды /hoodmine sell [material] [amount]
-    public void handleSell(Player player, String[] args) {
+    public boolean handleReset(Player player) {
+        regionManager.resetMine();
         String mineName = configManager.getMineName();
         String phaseName = regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена";
         String timeToNext = String.valueOf(regionManager.getTimeToNextPhase());
+        player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                MiniMessage.miniMessage().deserialize(
+                        configManager.getRawMessage("mine_reset"),
+                        Placeholder.unparsed("mine_name", mineName),
+                        Placeholder.unparsed("mine_phase", phaseName),
+                        Placeholder.unparsed("time_to_next", timeToNext)
+                )
+        ));
+        return true;
+    }
 
-        if (args.length < 2) {
-            player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_usage"),
-                            Placeholder.unparsed("mine_name", mineName),
-                            Placeholder.unparsed("mine_phase", phaseName),
-                            Placeholder.unparsed("time_to_next", timeToNext))
-            ));
-            return;
-        }
-
-        String materialName = args[0].toUpperCase();
-        Map<String, Double> sellPrices = configManager.getSellPrices();
-        if (!sellPrices.containsKey(materialName)) {
-            player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_invalid_material"),
-                            Placeholder.unparsed("mine_name", mineName),
-                            Placeholder.unparsed("mine_phase", phaseName),
-                            Placeholder.unparsed("time_to_next", timeToNext))
-            ));
-            return;
-        }
-
-        int amount;
-        try {
-            amount = Integer.parseInt(args[1]);
-            if (amount <= 0) {
-                player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                        MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_invalid_amount"),
-                                Placeholder.unparsed("mine_name", mineName),
-                                Placeholder.unparsed("mine_phase", phaseName),
-                                Placeholder.unparsed("time_to_next", timeToNext))
+    public boolean handleSeller(Player player) {
+        Inventory inventory = Bukkit.createInventory(player, 27, LegacyComponentSerializer.legacySection().serialize(
+                MiniMessage.miniMessage().deserialize(configManager.getRawMessage("seller_title"))
+        ));
+        double multiplier = questManager.getPlayerMultiplier(player.getUniqueId());
+        for (ConfigManager.SellerItem item : configManager.getSellerItems().values()) {
+            ItemStack itemStack = new ItemStack(item.getMaterial());
+            ItemMeta meta = itemStack.getItemMeta();
+            if (meta != null) {
+                meta.setDisplayName(LegacyComponentSerializer.legacySection().serialize(
+                        MiniMessage.miniMessage().deserialize(item.getDisplayName())
                 ));
-                return;
+                List<String> lore = new ArrayList<>();
+                for (String line : item.getLore()) {
+                    lore.add(LegacyComponentSerializer.legacySection().serialize(
+                            MiniMessage.miniMessage().deserialize(
+                                    line,
+                                    Placeholder.unparsed("price", String.format("%.2f", item.getPrice() * multiplier)),
+                                    Placeholder.unparsed("multiplier", String.format("%.2f", multiplier))
+                            )
+                    ));
+                }
+                meta.setLore(lore);
+                itemStack.setItemMeta(meta);
             }
-        } catch (NumberFormatException e) {
-            player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_invalid_amount"),
-                            Placeholder.unparsed("mine_name", mineName),
-                            Placeholder.unparsed("mine_phase", phaseName),
-                            Placeholder.unparsed("time_to_next", timeToNext))
-            ));
+            inventory.addItem(itemStack);
+        }
+        player.openInventory(inventory);
+        return true;
+    }
+
+    @EventHandler
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player)) {
             return;
         }
-
-        Material material = Material.getMaterial(materialName);
-        if (material == null) {
-            player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_invalid_material"),
-                            Placeholder.unparsed("mine_name", mineName),
-                            Placeholder.unparsed("mine_phase", phaseName),
-                            Placeholder.unparsed("time_to_next", timeToNext))
-            ));
+        String title = event.getView().getTitle();
+        String expectedTitle = LegacyComponentSerializer.legacySection().serialize(
+                MiniMessage.miniMessage().deserialize(configManager.getRawMessage("seller_title"))
+        );
+        if (!title.equals(expectedTitle)) {
             return;
         }
-
-        // Проверка инвентаря игрока
-        int totalAmount = 0;
+        event.setCancelled(true);
+        ItemStack clickedItem = event.getCurrentItem();
+        if (clickedItem == null || clickedItem.getType() == Material.AIR) {
+            return;
+        }
+        ConfigManager.SellerItem sellerItem = null;
+        for (ConfigManager.SellerItem item : configManager.getSellerItems().values()) {
+            if (item.getMaterial() == clickedItem.getType()) {
+                sellerItem = item;
+                break;
+            }
+        }
+        if (sellerItem == null) {
+            return;
+        }
+        double multiplier = questManager.getPlayerMultiplier(player.getUniqueId());
+        double price = sellerItem.getPrice() * multiplier;
+        int amount = 0;
         for (ItemStack item : player.getInventory().getContents()) {
-            if (item != null && item.getType() == material) {
-                totalAmount += item.getAmount();
+            if (item != null && item.getType() == sellerItem.getMaterial()) {
+                amount += item.getAmount();
             }
         }
-
-        if (totalAmount < amount) {
-            String displayName = configManager.getQuests().stream()
-                    .filter(q -> q.getTargetBlock().equals(materialName))
-                    .findFirst()
-                    .map(ConfigManager.Quest::getDisplayName)
-                    .orElse(materialName);
+        if (amount == 0) {
+            String mineName = configManager.getMineName();
+            String phaseName = regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена";
+            String timeToNext = String.valueOf(regionManager.getTimeToNextPhase());
             player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
                     MiniMessage.miniMessage().deserialize(
-                            configManager.getRawMessage("sell_not_enough"),
-                            Placeholder.unparsed("material", displayName),
+                            configManager.getRawMessage("no_items_to_sell"),
                             Placeholder.unparsed("mine_name", mineName),
                             Placeholder.unparsed("mine_phase", phaseName),
                             Placeholder.unparsed("time_to_next", timeToNext)
@@ -139,38 +136,21 @@ public class CommandHandler {
             ));
             return;
         }
-
-        // Удаление предметов и выдача денег
-        int remaining = amount;
-        for (ItemStack item : player.getInventory().getContents()) {
-            if (item != null && item.getType() == material) {
-                int itemAmount = item.getAmount();
-                if (itemAmount <= remaining) {
-                    player.getInventory().remove(item);
-                    remaining -= itemAmount;
-                } else {
-                    item.setAmount(itemAmount - remaining);
-                    remaining = 0;
-                }
-                if (remaining == 0) break;
-            }
-        }
-
-        double price = sellPrices.get(materialName) * amount;
-        double multiplier = questManager.calculateRewardMultiplier(player);
-        double finalPrice = price * multiplier;
-        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "eco give " + player.getName() + " " + finalPrice);
-        String displayName = configManager.getQuests().stream()
-                .filter(q -> q.getTargetBlock().equals(materialName))
-                .findFirst()
-                .map(ConfigManager.Quest::getDisplayName)
-                .orElse(materialName);
+        double totalMoney = price * amount;
+        // Предполагается интеграция с Vault
+        // Economy econ = VaultHook.getEconomy();
+        // if (econ != null) econ.depositPlayer(player, totalMoney);
+        player.getInventory().remove(sellerItem.getMaterial());
+        String mineName = configManager.getMineName();
+        String phaseName = regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена";
+        String timeToNext = String.valueOf(regionManager.getTimeToNextPhase());
         player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
                 MiniMessage.miniMessage().deserialize(
-                        configManager.getRawMessage("sell_success"),
+                        configManager.getRawMessage("items_sold"),
                         Placeholder.unparsed("amount", String.valueOf(amount)),
-                        Placeholder.unparsed("material", displayName),
-                        Placeholder.unparsed("money", String.format("%.2f", finalPrice)),
+                        Placeholder.unparsed("material", sellerItem.getMaterial().name()),
+                        Placeholder.unparsed("money", String.format("%.2f", totalMoney)),
+                        Placeholder.unparsed("multiplier", String.format("%.2f", multiplier)),
                         Placeholder.unparsed("mine_name", mineName),
                         Placeholder.unparsed("mine_phase", phaseName),
                         Placeholder.unparsed("time_to_next", timeToNext)
@@ -178,47 +158,32 @@ public class CommandHandler {
         ));
     }
 
-    // Обработка команды /hoodmine seller
-    public void handleSeller(Player player) {
-        questManager.openSellerGUI(player, 0);
+    public boolean handleQuests(Player player) {
+        Inventory inventory = Bukkit.createInventory(player, 27, LegacyComponentSerializer.legacySection().serialize(
+                MiniMessage.miniMessage().deserialize(configManager.getRawMessage("quests_title"))
+        ));
+        for (ConfigManager.Quest quest : configManager.getQuests()) {
+            ItemStack item = questManager.getQuestItem(quest, player);
+            inventory.addItem(item);
+        }
+        player.openInventory(inventory);
+        return true;
     }
 
-    // Обработка команды /hoodmine reset
-    public void handleReset(Player player) {
+    public boolean handleHelp(CommandSender sender) {
         String mineName = configManager.getMineName();
         String phaseName = regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена";
         String timeToNext = String.valueOf(regionManager.getTimeToNextPhase());
-
-        if (regionManager.getMineRegion() == null) {
-            player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("no_region"),
+        for (String message : configManager.getRawMessage("help").split("\n")) {
+            sender.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                    MiniMessage.miniMessage().deserialize(
+                            message,
                             Placeholder.unparsed("mine_name", mineName),
                             Placeholder.unparsed("mine_phase", phaseName),
-                            Placeholder.unparsed("time_to_next", timeToNext))
+                            Placeholder.unparsed("time_to_next", timeToNext)
+                    )
             ));
-            return;
         }
-        regionManager.resetMine();
-        player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                MiniMessage.miniMessage().deserialize(configManager.getRawMessage("reset_success"),
-                        Placeholder.unparsed("mine_name", mineName),
-                        Placeholder.unparsed("mine_phase", phaseName),
-                        Placeholder.unparsed("time_to_next", timeToNext))
-        ));
-    }
-
-    // Обработка команды /hoodmine info
-    public void handleInfo(Player player) {
-        String mineName = configManager.getMineName();
-        String phaseName = regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена";
-        String timeToNext = String.valueOf(regionManager.getTimeToNextPhase());
-        player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                MiniMessage.miniMessage().deserialize(
-                        configManager.getRawMessage("info_message"),
-                        Placeholder.unparsed("mine_name", mineName),
-                        Placeholder.unparsed("mine_phase", phaseName),
-                        Placeholder.unparsed("time_to_next", timeToNext)
-                )
-        ));
+        return true;
     }
 }

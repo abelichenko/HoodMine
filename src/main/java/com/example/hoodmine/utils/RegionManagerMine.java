@@ -55,7 +55,13 @@ public class RegionManagerMine {
                 }
             }
         }
-        currentPhase = configManager.getPhases().get(0);
+        List<ConfigManager.Phase> phases = configManager.getPhases();
+        if (!phases.isEmpty()) {
+            currentPhase = phases.get(0);
+        } else {
+            plugin.getLogger().warning("Список фаз пуст. Устанавливается currentPhase = null.");
+            currentPhase = null;
+        }
         timeToNextPhase = configManager.getTimerInterval();
     }
 
@@ -139,9 +145,19 @@ public class RegionManagerMine {
 
     // Сброс шахты
     public void resetMine() {
-        if (mineRegion == null) return;
+        if (mineRegion == null) {
+            plugin.getLogger().warning("Регион шахты не установлен. Сброс невозможен.");
+            return;
+        }
+        if (currentPhase == null) {
+            plugin.getLogger().warning("Текущая фаза не установлена. Сброс невозможен.");
+            return;
+        }
         World world = plugin.getServer().getWorld(plugin.getConfig().getString("world"));
-        if (world == null) return;
+        if (world == null) {
+            plugin.getLogger().warning("Мир шахты не найден. Сброс невозможен.");
+            return;
+        }
         BlockVector3 min = mineRegion.getMinimumPoint();
         BlockVector3 max = mineRegion.getMaximumPoint();
         for (int x = min.getBlockX(); x <= max.getBlockX(); x++) {
@@ -149,10 +165,10 @@ public class RegionManagerMine {
                 for (int z = min.getBlockZ(); z <= max.getBlockZ(); z++) {
                     Location loc = new Location(world, x, y, z);
                     if (mineRegion.contains(x, y, z)) {
-                        if (random.nextDouble() < getCurrentPhase().getSpawns().getOrDefault("STONE", 1.0)) {
+                        if (random.nextDouble() < currentPhase.getSpawns().getOrDefault("STONE", 1.0)) {
                             loc.getBlock().setType(Material.STONE);
                         } else {
-                            String material = getRandomMaterial(getCurrentPhase().getSpawns());
+                            String material = getRandomMaterial(currentPhase.getSpawns());
                             loc.getBlock().setType(Material.valueOf(material));
                         }
                     }
@@ -192,7 +208,12 @@ public class RegionManagerMine {
     // Смена фазы
     private void switchPhase() {
         List<ConfigManager.Phase> phases = configManager.getPhases();
-        int currentIndex = phases.indexOf(currentPhase);
+        if (phases.isEmpty()) {
+            plugin.getLogger().warning("Список фаз пуст. Смена фазы невозможна.");
+            currentPhase = null;
+            return;
+        }
+        int currentIndex = currentPhase != null ? phases.indexOf(currentPhase) : -1;
         currentPhase = phases.get((currentIndex + 1) % phases.size());
         resetMine();
         String mineName = configManager.getMineName();

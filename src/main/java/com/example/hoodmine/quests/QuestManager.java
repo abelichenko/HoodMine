@@ -7,14 +7,11 @@ import com.example.hoodmine.utils.RegionManagerMine;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
@@ -23,18 +20,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-// Класс для управления квестами и GUI скупщика
+// Класс для управления квестами
 public class QuestManager implements Listener {
     private final HoodMinePlugin plugin;
     private final ConfigManager configManager;
     private final DatabaseManager databaseManager;
     private final RegionManagerMine regionManager;
     private final Map<UUID, Map<String, Integer>> playerProgress;
-    private final Map<UUID, Integer> playerPages;
-    private final Pattern hexPattern = Pattern.compile("^#([A-Fa-f0-9]{6})(.*)$");
+    private final Map<UUID, Integer> completedQuests;
 
     public QuestManager(HoodMinePlugin plugin, ConfigManager configManager, DatabaseManager databaseManager, RegionManagerMine regionManager) {
         this.plugin = plugin;
@@ -42,368 +36,108 @@ public class QuestManager implements Listener {
         this.databaseManager = databaseManager;
         this.regionManager = regionManager;
         this.playerProgress = new HashMap<>();
-        this.playerPages = new HashMap<>();
+        this.completedQuests = new HashMap<>();
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
+        loadCompletedQuests();
     }
 
-    // Преобразование строки с HEX-кодом в формат MiniMessage
-    private String formatTitleWithHex(String title) {
-        Matcher matcher = hexPattern.matcher(title);
-        if (matcher.matches()) {
-            String hexCode = matcher.group(1);
-            String text = matcher.group(2);
-            return "<#" + hexCode + ">" + text;
-        }
-        return title;
-    }
-
-    // Открытие GUI квестов
-    public void openQuestsGUI(Player player, int page) {
-        ConfigManager.QuestsGUISettings guiSettings = configManager.getQuestsGUISettings();
-        String mineName = configManager.getMineName();
-        String phaseName = regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена";
-        String timeToNext = String.valueOf(regionManager.getTimeToNextPhase());
-        Inventory inventory = plugin.getServer().createInventory(null, guiSettings.getSize(),
-                LegacyComponentSerializer.legacySection().serialize(MiniMessage.miniMessage().deserialize(
-                        "Квесты",
-                        Placeholder.unparsed("mine_name", mineName),
-                        Placeholder.unparsed("mine_phase", phaseName),
-                        Placeholder.unparsed("time_to_next", timeToNext)
-                )));
-
-        List<ConfigManager.Quest> quests = configManager.getQuests();
-        int questsPerPage = guiSettings.getQuestsPerPage();
-        int startIndex = page * questsPerPage;
-        int endIndex = Math.min(startIndex + questsPerPage, quests.size());
-        List<Integer> questSlots = guiSettings.getQuestSlots();
-
-        // Заполнение слотов квестами
-        for (int i = startIndex; i < endIndex && i < quests.size(); i++) {
-            ConfigManager.Quest quest = quests.get(i);
-            int slot = questSlots.get(i - startIndex);
-            ItemStack item = new ItemStack(Material.valueOf(quest.getTargetBlock()));
-            ItemMeta meta = item.getItemMeta();
-            String formattedTitle = formatTitleWithHex(quest.getTitle());
-            meta.setDisplayName(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize(formattedTitle,
-                            Placeholder.unparsed("mine_name", mineName),
-                            Placeholder.unparsed("mine_phase", phaseName),
-                            Placeholder.unparsed("time_to_next", timeToNext))
-            ));
-            List<String> lore = new ArrayList<>();
-            lore.add(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize("Требуется: " + quest.getAmount() + " " + quest.getDisplayName(),
-                            Placeholder.unparsed("mine_name", mineName),
-                            Placeholder.unparsed("mine_phase", phaseName),
-                            Placeholder.unparsed("time_to_next", timeToNext))
-            ));
-            lore.add(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize("Награда: Выполнить команды",
-                            Placeholder.unparsed("mine_name", mineName),
-                            Placeholder.unparsed("mine_phase", phaseName),
-                            Placeholder.unparsed("time_to_next", timeToNext))
-            ));
-            int progress = getPlayerProgress(player.getUniqueId(), quest.getId());
-            lore.add(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize("Прогресс: " + progress + "/" + quest.getAmount(),
-                            Placeholder.unparsed("mine_name", mineName),
-                            Placeholder.unparsed("mine_phase", phaseName),
-                            Placeholder.unparsed("time_to_next", timeToNext))
-            ));
-            meta.setLore(lore);
-            item.setItemMeta(meta);
-            inventory.setItem(slot, item);
-        }
-
-        // Кнопка "Следующая страница"
-        if (endIndex < quests.size() && guiSettings.getNextPageSlot() >= 0) {
-            ItemStack nextPageItem = new ItemStack(Material.valueOf(guiSettings.getNextPageMaterial()));
-            ItemMeta nextMeta = nextPageItem.getItemMeta();
-            nextMeta.setDisplayName(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize(guiSettings.getNextPageName(),
-                            Placeholder.unparsed("mine_name", mineName),
-                            Placeholder.unparsed("mine_phase", phaseName),
-                            Placeholder.unparsed("time_to_next", timeToNext))
-            ));
-            nextPageItem.setItemMeta(nextMeta);
-            inventory.setItem(guiSettings.getNextPageSlot(), nextPageItem);
-        }
-
-        // Кнопка "Предыдущая страница"
-        if (page > 0 && guiSettings.getPrevPageSlot() >= 0) {
-            ItemStack prevPageItem = new ItemStack(Material.valueOf(guiSettings.getPrevPageMaterial()));
-            ItemMeta prevMeta = prevPageItem.getItemMeta();
-            prevMeta.setDisplayName(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize(guiSettings.getPrevPageName(),
-                            Placeholder.unparsed("mine_name", mineName),
-                            Placeholder.unparsed("mine_phase", phaseName),
-                            Placeholder.unparsed("time_to_next", timeToNext))
-            ));
-            prevPageItem.setItemMeta(prevMeta);
-            inventory.setItem(guiSettings.getPrevPageSlot(), prevPageItem);
-        }
-
-        playerPages.put(player.getUniqueId(), page);
-        player.openInventory(inventory);
-    }
-
-    // Открытие GUI скупщика
-    public void openSellerGUI(Player player, int page) {
-        ConfigManager.SellerGUISettings guiSettings = configManager.getSellerGUISettings();
-        String mineName = configManager.getMineName();
-        String phaseName = regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена";
-        String timeToNext = String.valueOf(regionManager.getTimeToNextPhase());
-        Inventory inventory = plugin.getServer().createInventory(null, guiSettings.getSize(),
-                LegacyComponentSerializer.legacySection().serialize(MiniMessage.miniMessage().deserialize(
-                        "Скупщик",
-                        Placeholder.unparsed("mine_name", mineName),
-                        Placeholder.unparsed("mine_phase", phaseName),
-                        Placeholder.unparsed("time_to_next", timeToNext)
-                )));
-
-        List<ConfigManager.SellItem> sellItems = configManager.getSellItems();
-        int itemsPerPage = guiSettings.getItemsPerPage();
-        int startIndex = page * itemsPerPage;
-        int endIndex = Math.min(startIndex + itemsPerPage, sellItems.size());
-        List<Integer> itemSlots = guiSettings.getItemSlots();
-
-        // Заполнение слотов предметами
-        for (int i = startIndex; i < endIndex && i < sellItems.size(); i++) {
-            ConfigManager.SellItem sellItem = sellItems.get(i);
-            int slot = itemSlots.get(i - startIndex);
-            ItemStack item = new ItemStack(Material.valueOf(sellItem.getMaterial()));
-            ItemMeta meta = item.getItemMeta();
-            double multiplier = calculateRewardMultiplier(player);
-            double finalPrice = sellItem.getPrice() * sellItem.getAmount() * multiplier;
-            meta.setDisplayName(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize(sellItem.getDisplayName(),
-                            Placeholder.unparsed("mine_name", mineName),
-                            Placeholder.unparsed("mine_phase", phaseName),
-                            Placeholder.unparsed("time_to_next", timeToNext))
-            ));
-            List<String> lore = new ArrayList<>();
-            lore.add(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize("Продажа: " + sellItem.getAmount() + " " + sellItem.getDisplayName(),
-                            Placeholder.unparsed("mine_name", mineName),
-                            Placeholder.unparsed("mine_phase", phaseName),
-                            Placeholder.unparsed("time_to_next", timeToNext))
-            ));
-            lore.add(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize("Цена: " + String.format("%.2f", finalPrice) + " (x" + String.format("%.2f", multiplier) + ")",
-                            Placeholder.unparsed("mine_name", mineName),
-                            Placeholder.unparsed("mine_phase", phaseName),
-                            Placeholder.unparsed("time_to_next", timeToNext))
-            ));
-            meta.setLore(lore);
-            item.setItemMeta(meta);
-            inventory.setItem(slot, item);
-        }
-
-        // Кнопка "Следующая страница"
-        if (endIndex < sellItems.size() && guiSettings.getNextPageSlot() >= 0) {
-            ItemStack nextPageItem = new ItemStack(Material.valueOf(guiSettings.getNextPageMaterial()));
-            ItemMeta nextMeta = nextPageItem.getItemMeta();
-            nextMeta.setDisplayName(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize(guiSettings.getNextPageName(),
-                            Placeholder.unparsed("mine_name", mineName),
-                            Placeholder.unparsed("mine_phase", phaseName),
-                            Placeholder.unparsed("time_to_next", timeToNext))
-            ));
-            nextPageItem.setItemMeta(nextMeta);
-            inventory.setItem(guiSettings.getNextPageSlot(), nextPageItem);
-        }
-
-        // Кнопка "Предыдущая страница"
-        if (page > 0 && guiSettings.getPrevPageSlot() >= 0) {
-            ItemStack prevPageItem = new ItemStack(Material.valueOf(guiSettings.getPrevPageMaterial()));
-            ItemMeta prevMeta = prevPageItem.getItemMeta();
-            prevMeta.setDisplayName(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize(guiSettings.getPrevPageName(),
-                            Placeholder.unparsed("mine_name", mineName),
-                            Placeholder.unparsed("mine_phase", phaseName),
-                            Placeholder.unparsed("time_to_next", timeToNext))
-            ));
-            prevPageItem.setItemMeta(prevMeta);
-            inventory.setItem(guiSettings.getPrevPageSlot(), prevPageItem);
-        }
-
-        playerPages.put(player.getUniqueId(), page);
-        player.openInventory(inventory);
-    }
-
-    // Обработка кликов по GUI
-    @EventHandler
-    public void onInventoryClick(InventoryClickEvent event) {
-        String title = event.getView().getTitle();
-        if (!title.equals("Квесты") && !title.equals("Скупщик")) return;
-        event.setCancelled(true);
-        if (!(event.getWhoClicked() instanceof Player player)) return;
-        int slot = event.getRawSlot();
-        int currentPage = playerPages.getOrDefault(player.getUniqueId(), 0);
-
-        if (title.equals("Квесты")) {
-            ConfigManager.QuestsGUISettings guiSettings = configManager.getQuestsGUISettings();
-            if (slot == guiSettings.getNextPageSlot() && (currentPage + 1) * guiSettings.getQuestsPerPage() < configManager.getQuests().size()) {
-                openQuestsGUI(player, currentPage + 1);
-            } else if (slot == guiSettings.getPrevPageSlot() && currentPage > 0) {
-                openQuestsGUI(player, currentPage - 1);
-            }
-        } else if (title.equals("Скупщик")) {
-            ConfigManager.SellerGUISettings guiSettings = configManager.getSellerGUISettings();
-            List<ConfigManager.SellItem> sellItems = configManager.getSellItems();
-            int itemsPerPage = guiSettings.getItemsPerPage();
-            int startIndex = currentPage * itemsPerPage;
-
-            if (slot == guiSettings.getNextPageSlot() && (currentPage + 1) * itemsPerPage < sellItems.size()) {
-                openSellerGUI(player, currentPage + 1);
-            } else if (slot == guiSettings.getPrevPageSlot() && currentPage > 0) {
-                openSellerGUI(player, currentPage - 1);
-            } else {
-                // Проверка клика по предмету продажи
-                int index = guiSettings.getItemSlots().indexOf(slot);
-                if (index >= 0 && index < sellItems.size() - startIndex) {
-                    ConfigManager.SellItem sellItem = sellItems.get(startIndex + index);
-                    handleSellItem(player, sellItem);
-                }
-            }
+    private void loadCompletedQuests() {
+        for (Player player : plugin.getServer().getOnlinePlayers()) {
+            UUID playerId = player.getUniqueId();
+            int completed = databaseManager.getCompletedQuests(playerId);
+            completedQuests.put(playerId, completed);
         }
     }
 
-    // Обработка продажи предмета
-    private void handleSellItem(Player player, ConfigManager.SellItem sellItem) {
-        Material material = Material.getMaterial(sellItem.getMaterial());
-        String mineName = configManager.getMineName();
-        String phaseName = regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена";
-        String timeToNext = String.valueOf(regionManager.getTimeToNextPhase());
-
-        if (material == null) {
-            player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_invalid_material"),
-                            Placeholder.unparsed("mine_name", mineName),
-                            Placeholder.unparsed("mine_phase", phaseName),
-                            Placeholder.unparsed("time_to_next", timeToNext))
-            ));
-            return;
-        }
-
-        // Проверка инвентаря игрока
-        int totalAmount = 0;
-        for (ItemStack item : player.getInventory().getContents()) {
-            if (item != null && item.getType() == material) {
-                totalAmount += item.getAmount();
-            }
-        }
-
-        if (totalAmount < sellItem.getAmount()) {
-            player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                    MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_not_enough"),
-                            Placeholder.unparsed("material", sellItem.getDisplayName()),
-                            Placeholder.unparsed("mine_name", mineName),
-                            Placeholder.unparsed("mine_phase", phaseName),
-                            Placeholder.unparsed("time_to_next", timeToNext))
-            ));
-            return;
-        }
-
-        // Удаление предметов
-        int remaining = sellItem.getAmount();
-        for (ItemStack item : player.getInventory().getContents()) {
-            if (item != null && item.getType() == material) {
-                int itemAmount = item.getAmount();
-                if (itemAmount <= remaining) {
-                    player.getInventory().remove(item);
-                    remaining -= itemAmount;
-                } else {
-                    item.setAmount(itemAmount - remaining);
-                    remaining = 0;
-                }
-                if (remaining == 0) break;
-            }
-        }
-
-        // Выполнение команд и расчёт цены с множителем
-        double multiplier = calculateRewardMultiplier(player);
-        double finalPrice = sellItem.getPrice() * sellItem.getAmount() * multiplier;
-        for (String command : sellItem.getCommands()) {
-            String finalCommand = command.replace("%play%", player.getName())
-                    .replace("%amount%", String.valueOf(sellItem.getAmount()))
-                    .replace("%money%", String.format("%.2f", finalPrice));
-            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCommand);
-        }
-
-        player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                MiniMessage.miniMessage().deserialize(configManager.getRawMessage("sell_success"),
-                        Placeholder.unparsed("amount", String.valueOf(sellItem.getAmount())),
-                        Placeholder.unparsed("material", sellItem.getDisplayName()),
-                        Placeholder.unparsed("money", String.format("%.2f", finalPrice)),
-                        Placeholder.unparsed("mine_name", mineName),
-                        Placeholder.unparsed("mine_phase", phaseName),
-                        Placeholder.unparsed("time_to_next", timeToNext))
-        ));
-    }
-
-    // Обработка добычи блока
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
-        if (regionManager.isInMineRegion(event.getBlock().getLocation())) {
-            String material = event.getBlock().getType().name();
-            String mineName = configManager.getMineName();
-            String phaseName = regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена";
-            String timeToNext = String.valueOf(regionManager.getTimeToNextPhase());
-            for (ConfigManager.Quest quest : configManager.getQuests()) {
-                if (quest.getTargetBlock().equals(material)) {
-                    UUID playerId = player.getUniqueId();
-                    String questId = quest.getId();
-                    int progress = getPlayerProgress(playerId, questId) + 1;
-                    updatePlayerProgress(playerId, questId, progress);
-                    if (progress >= quest.getAmount()) {
-                        double multiplier = calculateRewardMultiplier(player);
-                        for (String command : quest.getReward()) {
-                            String finalCommand = command.replace("%play%", player.getName());
-                            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCommand);
-                        }
-                        String formattedTitle = formatTitleWithHex(quest.getTitle());
-                        player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
-                                MiniMessage.miniMessage().deserialize(
-                                        configManager.getRawMessage("quest_completed"),
-                                        Placeholder.unparsed("quest", LegacyComponentSerializer.legacySection().serialize(
-                                                MiniMessage.miniMessage().deserialize(formattedTitle)
-                                        )),
-                                        Placeholder.unparsed("mine_name", mineName),
-                                        Placeholder.unparsed("mine_phase", phaseName),
-                                        Placeholder.unparsed("time_to_next", timeToNext)
-                                )
-                        ));
-                        resetPlayerProgress(playerId, questId);
-                    }
+        if (!regionManager.isInMineRegion(event.getBlock().getLocation())) {
+            return;
+        }
+        Material material = event.getBlock().getType();
+        Map<String, Integer> progress = playerProgress.computeIfAbsent(player.getUniqueId(), k -> new HashMap<>());
+        for (ConfigManager.Quest quest : configManager.getQuests()) {
+            if (quest.getMaterial() == material) {
+                String questId = quest.getId();
+                int current = progress.getOrDefault(questId, 0) + 1;
+                progress.put(questId, current);
+                if (current >= quest.getAmount()) {
+                    completeQuest(player, quest);
+                    progress.remove(questId);
                 }
             }
         }
     }
 
-    // Расчёт множителя наград
-    public double calculateRewardMultiplier(Player player) {
-        ConfigManager.RewardMultiplier multiplier = configManager.getRewardMultiplier();
-        int completedQuests = databaseManager.getCompletedQuestsCount(player.getUniqueId());
-        double calculated = multiplier.getBase() + (completedQuests * multiplier.getPerQuest());
-        return Math.min(calculated, multiplier.getMax());
+    public void completeQuest(Player player, ConfigManager.Quest quest) {
+        UUID playerId = player.getUniqueId();
+        if (quest.getMoney() > 0) {
+            // Предполагается интеграция с Vault
+            // Economy econ = VaultHook.getEconomy();
+            // if (econ != null) econ.depositPlayer(player, quest.getMoney());
+        }
+        if (quest.getExperience() > 0) {
+            player.giveExp(quest.getExperience());
+        }
+        for (String command : quest.getCommands()) {
+            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), command.replace("%player%", player.getName()));
+        }
+        int completed = completedQuests.getOrDefault(playerId, 0) + 1;
+        completedQuests.put(playerId, completed);
+        databaseManager.saveCompletedQuests(playerId, completed);
+        String mineName = configManager.getMineName();
+        String phaseName = regionManager.getCurrentPhase() != null ? regionManager.getCurrentPhase().getDisplayName() : "Не установлена";
+        String timeToNext = String.valueOf(regionManager.getTimeToNextPhase());
+        player.sendMessage(LegacyComponentSerializer.legacySection().serialize(
+                MiniMessage.miniMessage().deserialize(
+                        configManager.getRawMessage("quest_completed"),
+                        Placeholder.unparsed("quest_name", quest.getName()),
+                        Placeholder.unparsed("mine_name", mineName),
+                        Placeholder.unparsed("mine_phase", phaseName),
+                        Placeholder.unparsed("time_to_next", timeToNext),
+                        Placeholder.unparsed("multiplier", String.format("%.2f", getPlayerMultiplier(playerId)))
+                )
+        ));
     }
 
-    // Получение прогресса игрока
-    private int getPlayerProgress(UUID playerId, String questId) {
-        return playerProgress.computeIfAbsent(playerId, k -> new HashMap<>()).getOrDefault(questId, 0);
+    public ItemStack getQuestItem(ConfigManager.Quest quest, Player player) {
+        ItemStack item = new ItemStack(quest.getMaterial());
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(LegacyComponentSerializer.legacySection().serialize(
+                    MiniMessage.miniMessage().deserialize(quest.getName())
+            ));
+            Map<String, Integer> progress = getPlayerProgress(player.getUniqueId());
+            int current = progress.getOrDefault(quest.getId(), 0);
+            List<String> lore = new ArrayList<>();
+            if (quest.getDescription() != null) {
+                lore.add(LegacyComponentSerializer.legacySection().serialize(
+                        MiniMessage.miniMessage().deserialize(quest.getDescription())
+                ));
+            }
+            lore.add(LegacyComponentSerializer.legacySection().serialize(
+                    MiniMessage.miniMessage().deserialize("<white>Прогресс: <green>" + current + "/" + quest.getAmount())
+            ));
+            lore.add(LegacyComponentSerializer.legacySection().serialize(
+                    MiniMessage.miniMessage().deserialize("<white>Награда: <green>$" + quest.getMoney())
+            ));
+            lore.add(LegacyComponentSerializer.legacySection().serialize(
+                    MiniMessage.miniMessage().deserialize("<white>Опыт: <green>" + quest.getExperience())
+            ));
+            meta.setLore(lore);
+            item.setItemMeta(meta);
+        }
+        return item;
     }
 
-    // Обновление прогресса игрока
-    private void updatePlayerProgress(UUID playerId, String questId, int progress) {
-        playerProgress.computeIfAbsent(playerId, k -> new HashMap<>()).put(questId, progress);
-        databaseManager.updatePlayerProgress(playerId, questId, progress);
+    public Map<String, Integer> getPlayerProgress(UUID playerId) {
+        return playerProgress.getOrDefault(playerId, new HashMap<>());
     }
 
-    // Сброс прогресса игрока
-    private void resetPlayerProgress(UUID playerId, String questId) {
-        playerProgress.computeIfAbsent(playerId, k -> new HashMap<>()).put(questId, 0);
-        databaseManager.updatePlayerProgress(playerId, questId, 0);
+    public double getPlayerMultiplier(UUID playerId) {
+        int completed = completedQuests.getOrDefault(playerId, 0);
+        double multiplier = configManager.getRewardMultiplierBase() + (completed * configManager.getRewardMultiplierPerQuest());
+        return Math.min(multiplier, configManager.getRewardMultiplierMax());
     }
 }
