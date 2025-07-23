@@ -5,6 +5,7 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
@@ -24,6 +25,7 @@ public class ConfigManager {
     private double rewardMultiplierBase;
     private double rewardMultiplierPerQuest;
     private double rewardMultiplierMax;
+    private final MiniMessage miniMessage = MiniMessage.miniMessage();
 
     public ConfigManager(HoodMinePlugin plugin) {
         this.plugin = plugin;
@@ -34,6 +36,20 @@ public class ConfigManager {
         loadQuests();
         loadRewardMultiplier();
         plugin.getLogger().info("Конфигурация загружена. Фаз: " + phases.size() + ", Квестов: " + quests.size());
+    }
+
+    public String getRawMessage(String key) {
+        String raw = messages.getString(key, "<red>Сообщение не найдено: " + key);
+        return miniMessage.serialize(miniMessage.deserialize(raw)); // Рендеринг MiniMessage
+    }
+    // Метод для получения отформатированного имени фазы
+    public String getPhaseDisplayName(String phaseName) {
+        for (Phase phase : phases) {
+            if (phase.getName().equals(phaseName)) {
+                return miniMessage.serialize(miniMessage.deserialize(phase.getDisplayName()));
+            }
+        }
+        return phaseName;
     }
 
     private void loadConfig() {
@@ -206,9 +222,7 @@ public class ConfigManager {
         return quests;
     }
 
-    public String getRawMessage(String key) {
-        return messages.getString(key, "<red>Сообщение не найдено: " + key);
-    }
+
 
     public double getRewardMultiplierBase() {
         return rewardMultiplierBase;

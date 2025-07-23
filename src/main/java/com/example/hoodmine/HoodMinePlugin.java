@@ -7,10 +7,13 @@ import com.example.hoodmine.quests.QuestManager;
 import com.example.hoodmine.utils.HologramManager;
 import com.example.hoodmine.utils.PlaceholderHook;
 import com.example.hoodmine.utils.RegionManagerMine;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 // Основной класс плагина
-public class HoodMinePlugin extends JavaPlugin {
+public class HoodMinePlugin extends JavaPlugin implements Listener {
     private ConfigManager configManager;
     private RegionManagerMine regionManager;
     private DatabaseManager databaseManager;
@@ -21,6 +24,8 @@ public class HoodMinePlugin extends JavaPlugin {
     public void onEnable() {
         saveDefaultConfig();
         configManager = new ConfigManager(this);
+        getServer().getPluginManager().registerEvents(this, this);
+        getLogger().info("HoodMine v1.0 включён!");
         databaseManager = new DatabaseManager(this);
         regionManager = new RegionManagerMine(this, configManager, databaseManager);
         questManager = new QuestManager(this, configManager, databaseManager, regionManager);
@@ -33,6 +38,21 @@ public class HoodMinePlugin extends JavaPlugin {
             getLogger().info("PlaceholderAPI подключен, плейсхолдеры зарегистрированы.");
         } else {
             getLogger().warning("PlaceholderAPI не найден, плейсхолдеры не будут работать в других плагинах.");
+        }
+    }
+
+    @EventHandler
+    public void onBlockBreak(BlockBreakEvent event) {
+        String playerName = event.getPlayer().getName();
+        String materialName = event.getBlock().getType().toString();
+        for (ConfigManager.Quest quest : configManager.getQuests()) {
+            if (quest.getMaterial().toString().equals(materialName)) {
+                // Здесь нужно обновить прогресс игрока
+                getLogger().info(playerName + " добыл " + materialName + ", квест: " + quest.getName());
+                // Пример: увеличиваем прогресс (нужно реализовать хранение прогресса)
+                // int currentProgress = getPlayerProgress(playerName, quest.getId());
+                // setPlayerProgress(playerName, quest.getId(), currentProgress + 1);
+            }
         }
     }
 
@@ -54,5 +74,16 @@ public class HoodMinePlugin extends JavaPlugin {
 
     public HologramManager getHologramManager() {
         return hologramManager;
+    }
+
+    // Методы для хранения прогресса (пример, нужно реализовать)
+    private int getPlayerProgress(String playerName, String questId) {
+        // Логика получения прогресса (например, из файла или базы данных)
+        return 0; // Заменить на реальную логику
+    }
+
+    private void setPlayerProgress(String playerName, String questId, int progress) {
+        // Логика сохранения прогресса
+        getLogger().info(playerName + " обновлён прогресс квеста " + questId + " до " + progress);
     }
 }
